@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E.SUN Premium Inventory Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Morandi Color Palette */
+            --bg: #1E1E1E;
+            --surface: #353531;
+            --sidebar-bg: #2D2D2A;
+            --card-border: rgba(255, 255, 255, 0.08);
+            
+            /* Morandi Tones (Low Saturation) */
+            --neon-red: #A86B6B; /* Morandi Rose */
+            --neon-green: #8C9B8A; /* Morandi Sage */
+            --neon-glow-red: rgba(168, 107, 107, 0.3);
+            --neon-glow-green: rgba(140, 155, 138, 0.3);
+            
+            --success: var(--neon-red);
+            --danger: var(--neon-green);
+            
+            --text-main: #E0E0DB;
+            --text-muted: #94948C;
+            --sidebar-width: 220px;
+            --header-height: 80px;
+            --radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            padding: 30px 15px;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .logo-container {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .neon-logo {
+            width: 50px;
+            height: 30px;
+            overflow: visible;
+        }
+
+        .neon-path {
+            fill: none;
+            stroke: var(--neon-red);
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 5px var(--neon-glow-red));
+            animation: pulse 4s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 1px var(--neon-glow-red)); }
+            50% { opacity: 1; filter: drop-shadow(0 0 4px var(--neon-glow-red)); }
+        }
+
+        .sidebar-nav {
+            flex-grow: 1;
+        }
+
+        .sidebar-item {
+            padding: 12px 15px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 5px;
+            border-radius: 6px;
+        }
+
+        .sidebar-item:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-item.active {
+            color: #fff;
+            background: rgba(168, 107, 107, 0.1);
+            border-left: 2px solid var(--neon-red);
+            text-shadow: 0 0 5px var(--neon-glow-red);
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid var(--card-border);
+            padding-top: 20px;
+        }
+
+        .sidebar-action {
+            padding: 10px 15px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .sidebar-action:hover {
+            color: #fff;
+        }
+
+        /* --- Main Content --- */
+        #main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg);
+        }
+
+        .top-bar {
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .sidebar-sub-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding-left: 20px;
+        }
+        .sidebar-sub-menu.show {
+            max-height: 500px;
+            margin-bottom: 10px;
+        }
+        .sub-item {
+            padding: 8px 15px;
+            color: var(--text-muted);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 4px;
+            margin-bottom: 2px;
+        }
+        .sub-item:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .sub-item.active {
+            color: var(--neon-red);
+            text-shadow: 0 0 4px var(--neon-glow-red);
+        }
+        .month-label {
+            padding: 10px 15px 5px 15px;
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+
+
+        .content-body {
+            flex-grow: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+
+        /* --- Cards & Tables --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 24px;
+            border-radius: var(--radius);
+            border: 1px solid var(--card-border);
+            transition: transform 0.3s, border-color 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .card-label {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--text-main);
+            letter-spacing: 0.02em;
+        }
+
+        .card-value {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.7rem;
+            font-weight: 500;
+        }
+
+        .inventory-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--card-border);
+            overflow: hidden;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            padding: 15px 24px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.2rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        td {
+            padding: 16px 24px;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            font-family: 'Inter', sans-serif;
+        }
+
+        td[style*="text-align: right"] {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .positive { color: var(--neon-red); text-shadow: 0 0 5px var(--neon-glow-red); }
+        .negative { color: var(--neon-green); text-shadow: 0 0 5px var(--neon-glow-green); }
+
+        .btn-detail {
+            background: transparent;
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-detail:hover {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+        .details-row {
+            display: none;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .details-container {
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .detail-item {
+            display: grid; 
+            grid-template-columns: 120px 100px 100px 140px; 
+            gap: 30px; 
+            color: var(--text-muted); 
+            opacity: 0.9;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="logo-container">
+            <svg class="neon-logo" viewBox="0 0 48 24">
+                <path class="neon-path" d="M0 12 L10 12 L15 4 L25 20 L30 12 L48 12" />
+            </svg>
+        </div>
+        <div class="sidebar-nav">
+            <div id="nav-home" class="sidebar-item" onclick="switchView('home')">Home</div>
+            <div id="nav-dashboard" class="sidebar-item active" onclick="switchView('dashboard')"> Stock</div>
+            <div id="sidebar-date-menu" class="sidebar-sub-menu"></div>
+            <div id="nav-wallet" class="sidebar-item" onclick="switchView('wallet')">Wallet</div>
+            <div id="nav-news" class="sidebar-item" onclick="switchView('news')">News</div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div id="sync-btn-sidebar" class="sidebar-action" onclick="handleDownload()">
+                SYNC
+            </div>
+            <div id="export-btn-sidebar" class="sidebar-action" onclick="exportToSelfTxt()">
+                EXPORT
+            </div>
+
+        </div>
+    </div>
+    
+    <div id="main-content">
+        <div class="top-bar">
+            <h2 id="view-title" style="font-size: 1.2rem; font-weight: 700; letter-spacing: 0.05em;">INVESTMENT OVERVIEW</h2>
+        </div>
+
+        <div class="content-body">
+            <!-- News View -->
+            <div id="news-view" class="view-content" style="display: none;">
+                <div class="dashboard-sections" style="margin-top: 20px;">
+                    <section>
+                        <h3 class="section-title">交易委託與成交數據</h3>
+                        <div id="news-info-container" style="display: flex; flex-direction: column; gap: 20px;">
+                            <div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                正在讀取交易數據...
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <!-- Home View -->
+            <div id="home-view" class="view-content" style="display: none;">
+                <div class="dashboard-sections" style="margin-top: 20px;">
+                    <section>
+                        <h3 class="section-title">SDK 原始狀態數據</h3>
+                        <div id="home-info-container" style="display: flex; flex-direction: column; gap: 20px;">
+                            <!-- Full Info Cards will be injected here -->
+                            <div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                正在讀取 SDK 完整資訊...
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view-content">
+                <div class="dashboard-sections" style="margin-top: 20px;">
+                        <div id="stats-container" class="stats-grid"></div>
+                        <div class="inventory-card">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th onclick="setSort('stkNa')">股票名稱</th>
+                                        <th onclick="setSort('qty')" style="text-align: right">庫存股數</th>
+                                        <th onclick="setSort('avgPrice')" style="text-align: right">平均成本</th>
+                                        <th onclick="setSort('nowPrice')" style="text-align: right">當前市價</th>
+                                        <th onclick="setSort('mktValue')" style="text-align: right">資產市值</th>
+                                        <th onclick="setSort('plSum')" style="text-align: right">未實現損益</th>
+                                        <th onclick="setSort('per')" style="text-align: right">報酬率</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Wallet View -->
+            <div id="wallet-view" class="view-content" style="display: none;">
+                <div class="dashboard-sections" style="margin-top: 20px;">
+                    <section id="bank-section">
+                        <h3 class="section-title">銀行帳務 (餘額)</h3>
+                        <div id="bank-grid" class="stats-grid">
+                            <div class="card">
+                                <div class="card-label">可用餘額</div>
+                                <div id="bank-available" class="card-value">--</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-label">今日票交</div>
+                                <div id="bank-exchange" class="card-value">--</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-label">圈存金額 (台股)</div>
+                                <div id="bank-reserved" class="card-value">--</div>
+                            </div>
+                        </div>
+                    </section>
+                    <section id="settlements-section" style="margin-top: 30px;">
+                        <h3 class="section-title">交割資訊 (Settlements)</h3>
+                        <div id="settlements-container" style="display: flex; flex-direction: column; gap: 15px;">
+                            <div class="card" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                                暫無交割資料
+                            </div>
+                        </div>
+                    </section>                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const inventoryBody = document.getElementById('inventory-body');
+        const statsGrid = document.getElementById('stats-container');
+        // const selectedTitle = document.getElementById('selected-title');
+        // const selectedSubtitle = document.getElementById('selected-subtitle');
+
+        let currentRows = [];
+        let sortConfig = { key: null, direction: 'asc' };
+        let isHomeLoading = false;
+
+        // Efficient TOON Parser
+        const ToonParser = {
+            parse(text) {
+                if (!text) return {};
+                const lines = text.split(/\r?\n/);
+                const root = {};
+                const stack = [{ level: -1, obj: root }];
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (!line || !line.trim()) continue;
+
+                    const indent = line.search(/\S/);
+                    const trimmedLine = line.trim();
+                    const isListItem = trimmedLine.startsWith('-');
+                    
+                    let key = null, value = null;
+                    const colonIndex = trimmedLine.indexOf(':');
+                    
+                    if (colonIndex !== -1) {
+                        key = trimmedLine.substring(0, colonIndex).trim();
+                        value = trimmedLine.substring(colonIndex + 1).trim();
+                        if (isListItem) key = key.substring(1).trim();
+                    } else if (isListItem) {
+                        value = trimmedLine.substring(1).trim();
+                    } else {
+                        value = trimmedLine;
+                    }
+
+                    while (stack.length > 1 && indent <= stack[stack.length - 1].level) {
+                        stack.pop();
+                    }
+
+                    const parent = stack[stack.length - 1].obj;
+                    
+                    if (isListItem) {
+                        let newObj = {};
+                        if (key) {
+                            newObj[key] = this._parseVal(value);
+                        } else if (value !== "") {
+                            newObj = this._parseVal(value);
+                        }
+                        
+                        if (Array.isArray(parent)) {
+                            parent.push(newObj);
+                        } else {
+                            const placeholderKey = "_items";
+                            if (!parent[placeholderKey]) parent[placeholderKey] = [];
+                            parent[placeholderKey].push(newObj);
+                        }
+                        
+                        if (typeof newObj === 'object' && newObj !== null) {
+                            stack.push({ level: indent, obj: newObj });
+                        }
+                    } else if (key) {
+                        if (value === "") {
+                            let nextI = i + 1;
+                            while (nextI < lines.length && !lines[nextI].trim()) nextI++;
+                            const nextLineExists = nextI < lines.length;
+                            const nextIndent = nextLineExists ? lines[nextI].search(/\S/) : -1;
+                            const newVal = (nextLineExists && lines[nextI].trim().startsWith('-') && nextIndent > indent) ? [] : {};
+                            parent[key] = newVal;
+                            stack.push({ level: indent, obj: newVal });
+                        } else {
+                            parent[key] = this._parseVal(value);
+                        }
+                    }
+                }
+                return root;
+            },
+            _parseVal(v) {
+                const lower = v.toLowerCase().trim();
+                if (!lower || ['nan', 'none', 'null'].includes(lower)) return null;
+                if (lower === 'true') return true;
+                if (lower === 'false') return false;
+                if ((v.length > 1 && v.startsWith('0')) || /^\d{4}$/.test(v)) return v;
+                const num = Number(v);
+                return isNaN(num) || v.trim() === '' ? v : num;
+            }
+        };
+
+        const currencyFormatter = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 });
+        const percentFormatter = new Intl.NumberFormat('zh-TW', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2,
+            signDisplay: 'always'
+        });
+
+        function formatNum(num) {
+            return currencyFormatter.format(num || 0);
+        }
+
+        async function handleDownload() {
+            try {
+                const result = await window.electronAPI.downloadInventory();
+                if (result.success) await init();
+                else alert('同步失敗: ' + result.message);
+            } catch (err) {
+                alert('執行異常: ' + err.message);
+            }
+        }
+
+        async function exportToSelfTxt() {
+            if (!currentRows || currentRows.length === 0) {
+                alert('目前無庫存資料可供匯出。');
+                return;
+            }
+            const content = currentRows.map(row => `${row.stkNo},${row.stkNa}`).join('\n');
+            try {
+                const result = await window.electronAPI.saveSelfTxt(content);
+                if (result.success) alert('成功匯出至 self.txt！');
+                else alert('匯出失敗: ' + result.message);
+            } catch (err) {
+                alert('匯出異常: ' + err.message);
+            }
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            
+            const viewTitle = document.getElementById('view-title');
+            
+            if (viewId === 'dashboard') {
+                document.getElementById('dashboard-view').style.display = 'block';
+                document.getElementById('nav-dashboard').classList.add('active');
+                viewTitle.textContent = 'INVESTMENT OVERVIEW';
+                toggleDashboard(true);
+            } else if (viewId === 'wallet') {
+                document.getElementById('wallet-view').style.display = 'block';
+                document.getElementById('nav-wallet').classList.add('active');
+                viewTitle.textContent = 'BANKING ASSETS';
+            } else if (viewId === 'home') {
+                document.getElementById('home-view').style.display = 'block';
+                document.getElementById('nav-home').classList.add('active');
+                viewTitle.textContent = 'CORE STATUS';
+                loadHomeInfo();
+            } else if (viewId === 'news') {
+                document.getElementById('news-view').style.display = 'block';
+                document.getElementById('nav-news').classList.add('active');
+                viewTitle.textContent = 'TRADE ORDERS & TRANSACTIONS';
+                loadNewsInfo();
+            }
+        }
+
+        async function loadNewsInfo() {
+            const container = document.getElementById('news-info-container');
+            container.innerHTML = '<div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">正在同步當日交易數據...</div>';
+            
+            try {
+                const result = await window.electronAPI.getNewsInfo();
+                if (!result.success) {
+                    container.innerHTML = `<div class="card" style="color: var(--neon-red); padding: 20px;">獲取交易數據失敗: ${result.message}</div>`;
+                    return;
+                }
+                
+                const data = ToonParser.parse(result.data);
+                let finalHtml = '';
+                
+                const renderSection = (title, obj) => {
+                    let html = `
+                        <div class="card" style="width: 100%; border-left: 3px solid var(--neon-red)">
+                            <div class="card-label" style="font-size: 1.2rem; margin-bottom: 15px; color: var(--text-main)">${title}</div>
+                            <div class="info-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    `;
+                    
+                    const traverse = (target, prefix = '') => {
+                        if (typeof target !== 'object' || target === null) {
+                            html += `
+                                <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03)">
+                                    <span style="color: var(--text-muted); font-family: 'Roboto Mono', monospace">${prefix}</span>
+                                    <span style="color: var(--text-main); font-weight: 500">${target}</span>
+                                </div>`;
+                            return;
+                        }
+                        
+                        if (Array.isArray(target)) {
+                            if (target.length === 0) {
+                                html += `<div style="color: var(--text-muted); font-style: italic; padding: 5px 0;">無紀錄</div>`;
+                            } else {
+                                target.forEach((item, idx) => {
+                                    html += `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); color: var(--neon-red); font-size: 0.8rem;">#ITEM ${idx + 1}</div>`;
+                                    traverse(item, prefix);
+                                });
+                            }
+                            return;
+                        }
+
+                        for (const [key, val] of Object.entries(target)) {
+                            const newPrefix = prefix ? `${prefix}.${key}` : key;
+                            if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                                traverse(val, newPrefix);
+                            } else if (Array.isArray(val)) {
+                                if (val.length > 0 && typeof val[0] === 'object') {
+                                    traverse(val, newPrefix);
+                                } else {
+                                    html += `
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03)">
+                                            <span style="color: var(--text-muted); font-family: 'Roboto Mono', monospace">${newPrefix}</span>
+                                            <span style="color: var(--text-main); font-weight: 500">[${val.join(', ')}]</span>
+                                        </div>`;
+                                }
+                            } else {
+                                html += `
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03)">
+                                        <span style="color: var(--text-muted); font-family: 'Roboto Mono', monospace">${newPrefix}</span>
+                                        <span style="color: var(--text-main); font-weight: 500">${val}</span>
+                                    </div>`;
+                            }
+                        }
+                    };
+                    
+                    traverse(obj);
+                    html += `</div></div>`;
+                    return html;
+                };
+
+                if (data.orders) finalHtml += renderSection('委託紀錄 (Orders)', data.orders);
+                if (data.transactions) finalHtml += renderSection('成交明細 (Transactions)', data.transactions);
+                
+                if (!finalHtml) {
+                    container.innerHTML = '<div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">今日無交易委託或成交紀錄</div>';
+                } else {
+                    container.innerHTML = finalHtml;
+                }
+                
+            } catch (err) {
+                container.innerHTML = `<div class="card" style="color: var(--neon-red); padding: 20px;">執行異常: ${err.message}</div>`;
+            }
+        }
+
+        async function loadHomeInfo() {
+            if (isHomeLoading) return;
+            const container = document.getElementById('home-info-container');
+            
+            // Check if we already have content and only show loading if empty or forced
+            if (container.innerHTML.includes('正在讀取')) {
+                container.innerHTML = '<div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">正在同步 SDK 核心數據...</div>';
+            }
+
+            isHomeLoading = true;
+            try {
+                const result = await window.electronAPI.getHomeInfo();
+                isHomeLoading = false;
+                
+                if (!result.success) {
+                    container.innerHTML = `<div class="card" style="color: var(--neon-red); padding: 20px;">獲取資訊失敗: ${result.message}</div>`;
+                    return;
+                }
+                
+                const data = ToonParser.parse(result.data);
+                let finalHtml = '';
+                
+                // Render Section Helper
+                const renderSection = (title, obj) => {
+                    let html = `
+                        <div class="card" style="width: 100%; border-left: 3px solid var(--neon-red)">
+                            <div class="card-label" style="font-size: 1.2rem; margin-bottom: 15px; color: var(--text-main)">${title}</div>
+                            <div class="info-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    `;
+                    
+                    const traverse = (target, prefix = '') => {
+                        if (typeof target !== 'object' || target === null) {
+                            html += `
+                                <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03)">
+                                    <span style="color: var(--text-muted); font-family: 'Roboto Mono', monospace">${prefix}</span>
+                                    <span style="color: var(--text-main); font-weight: 500">${target}</span>
+                                </div>`;
+                            return;
+                        }
+                        
+                        for (const [key, val] of Object.entries(target)) {
+                            const newPrefix = prefix ? `${prefix}.${key}` : key;
+                            if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                                traverse(val, newPrefix);
+                            } else if (Array.isArray(val)) {
+                                html += `
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03)">
+                                        <span style="color: var(--text-muted); font-family: 'Roboto Mono', monospace">${newPrefix}</span>
+                                        <span style="color: var(--text-main); font-weight: 500">[${val.join(', ')}]</span>
+                                    </div>`;
+                            } else {
+                                html += `
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03)">
+                                        <span style="color: var(--text-muted); font-family: 'Roboto Mono', monospace">${newPrefix}</span>
+                                        <span style="color: var(--text-main); font-weight: 500">${val}</span>
+                                    </div>`;
+                            }
+                        }
+                    };
+                    
+                    traverse(obj);
+                    html += `</div></div>`;
+                    return html;
+                };
+
+                if (data.cert) finalHtml += renderSection('憑證資訊 (Certificate)', data.cert);
+                if (data.key) finalHtml += renderSection('API 金鑰狀態 (Key Info)', data.key);
+                if (data.trade_status) finalHtml += renderSection('交易權限與額度 (Trade Status)', data.trade_status);
+                
+                container.innerHTML = finalHtml;
+                
+            } catch (err) {
+                isHomeLoading = false;
+                container.innerHTML = `<div class="card" style="color: var(--neon-red); padding: 20px;">執行異常: ${err.message}</div>`;
+            }
+        }
+
+        function toggleDashboard(forceOpen = false) {
+            const menu = document.getElementById('sidebar-date-menu');
+            if (forceOpen) menu.classList.add('show');
+            else menu.classList.toggle('show');
+        }
+
+        async function init() {
+            const files = await window.electronAPI.listInventory();
+            const menu = document.getElementById('sidebar-date-menu');
+            menu.innerHTML = '';
+            
+            const groups = {};
+            files.forEach(file => {
+                const yearMonth = file.substring(0, 6);
+                if (!groups[yearMonth]) groups[yearMonth] = [];
+                groups[yearMonth].push(file);
+            });
+
+            const sortedMonths = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+            
+            sortedMonths.forEach((month, idx) => {
+                const label = document.createElement('div');
+                label.className = 'month-label';
+                label.textContent = `${month.substring(0,4)}年 ${month.substring(4,6)}月`;
+                menu.appendChild(label);
+                
+                groups[month].forEach(file => {
+                    const dateStr = file.replace('.toon', '');
+                    const formattedDate = `${dateStr.substring(0,4)}/${dateStr.substring(4,6)}/${dateStr.substring(6,8)}`;
+                    const item = document.createElement('div');
+                    item.className = 'sub-item';
+                    item.textContent = formattedDate;
+                    item.onclick = (e) => {
+                        e.stopPropagation();
+                        selectDate(file, item);
+                    };
+                    menu.appendChild(item);
+                    if (idx === 0 && groups[month][0] === file) {
+                        selectDate(file, item);
+                        menu.classList.add('show'); // 預設展開第一個
+                    }
+                });
+            });
+        }
+
+        async function selectDate(filename, element) {
+            document.querySelectorAll('.sub-item').forEach(el => el.classList.remove('active'));
+            if (element) element.classList.add('active');
+            
+            // const dateStr = filename.replace('.toon', '');
+            // const displayDate = `${dateStr.substring(0,4)}/${dateStr.substring(4,6)}/${dateStr.substring(6,8)}`;
+            
+            // document.getElementById('selected-date-label').textContent = displayDate;
+
+
+            const toonText = await window.electronAPI.readInventory(filename);
+            if (!toonText) {
+                processData(null);
+                renderBankBalance(null);
+                return;
+            }
+            const dataObj = ToonParser.parse(toonText);
+            processData(dataObj.inventory);
+            renderBankBalance(dataObj.balance);
+            renderSettlements(dataObj.settlements);
+            
+            // 優化體驗：點選日期後自動切換到主資產視圖 (Stock)
+            switchView('dashboard');
+        }
+
+        function renderBankBalance(data) {
+            const section = document.getElementById('bank-section');
+            if (!data || Object.keys(data).length === 0) {
+                // section.style.display = 'none';
+                return;
+            }
+            // section.style.display = 'block';
+            const exchange = data.exchange_balance ?? data.exange_balance ?? 0;
+            document.getElementById('bank-available').textContent = `$${formatNum(data.available_balance)}`;
+            document.getElementById('bank-exchange').textContent = `$${formatNum(exchange)}`;
+            document.getElementById('bank-reserved').textContent = `$${formatNum(data.stock_pre_save_amount)}`;
+        }
+
+        function renderSettlements(settlements) {
+            const container = document.getElementById('settlements-container');
+            if (!settlements || !Array.isArray(settlements) || settlements.length === 0) {
+                container.innerHTML = '<div class="card" style="text-align: center; padding: 20px; color: var(--text-muted);">目前無待交割款項</div>';
+                return;
+            }
+
+            let html = '';
+            settlements.forEach(item => {
+                const date = item.date || '未知日期';
+                const amount = parseFloat(item.amount) || 0;
+                const isPositive = amount >= 0; // 應收或應付
+                const color = isPositive ? 'var(--neon-red)' : 'var(--neon-green)';
+                const typeLabel = isPositive ? '應收 (Receivable)' : '應付 (Payable)';
+                
+                html += `
+                    <div class="card" style="width: 100%; border-left: 3px solid ${color}; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div class="card-label" style="font-size: 0.8rem; margin-bottom: 5px;">${date}</div>
+                            <div style="font-size: 1rem; color: var(--text-main); font-weight: 500;">${typeLabel}</div>
+                        </div>
+                        <div style="font-size: 1.4rem; font-weight: 600; color: ${color}; font-family: 'Roboto Mono', monospace;">
+                            $${formatNum(Math.abs(amount))}
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function processData(inventoryList) {
+            if (!inventoryList || !Array.isArray(inventoryList)) {
+                inventoryBody.innerHTML = '<tr><td colspan="8" style="text-align:center">目前無庫存資料</td></tr>';
+                currentRows = [];
+                render();
+                return;
+            }
+            currentRows = inventoryList.map(row => ({
+                stkNo: row.stk_no || 'N/A',
+                stkNa: row.stk_na || '未知股票',
+                qty: parseFloat(row.qty_l) || 0,
+                avgPrice: parseFloat(row.price_avg) || 0,
+                nowPrice: parseFloat(row.price_now) || 0,
+                mktValue: parseFloat(row.rec_va_sum) || 0,
+                plSum: parseFloat(row.make_a_sum) || 0,
+                per: parseFloat(row.make_a_per) || 0,
+                details: Array.isArray(row.stk_dats) ? row.stk_dats : [],
+                costRaw: Math.abs(parseFloat(row.cost_sum || 0))
+            })).filter(r => r.stkNo !== 'N/A');
+            render();
+        }
+
+        function setSort(key) {
+            if (sortConfig.key === key) sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            else { sortConfig.key = key; sortConfig.direction = 'asc'; }
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.getAttribute('onclick')?.includes(`'${key}'`)) th.classList.add(sortConfig.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+            });
+            currentRows.sort((a, b) => {
+                let valA = a[key], valB = b[key];
+                if (typeof valA === 'string') return sortConfig.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
+            });
+            render();
+        }
+
+        function render() {
+            let totalMkt = 0, totalCost = 0, totalPL = 0;
+            inventoryBody.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            currentRows.forEach((data, idx) => {
+                totalMkt += data.mktValue; totalCost += data.costRaw; totalPL += data.plSum;
+                const tr = document.createElement('tr');
+                const plClass = data.plSum >= 0 ? 'positive' : 'negative';
+                const perClass = data.per >= 0 ? 'positive' : 'negative';
+                tr.innerHTML = `
+                    <td><div style="font-weight: 500">${data.stkNa}</div><div style="font-size: 0.75rem; color: var(--text-muted)">${data.stkNo}</div></td>
+                    <td style="text-align: right">${formatNum(data.qty)}</td>
+                    <td style="text-align: right">${data.avgPrice.toFixed(2)}</td>
+                    <td style="text-align: right">${data.nowPrice.toFixed(2)}</td>
+                    <td style="text-align: right; font-weight: 500">${formatNum(data.mktValue)}</td>
+                    <td style="text-align: right" class="${plClass}">${data.plSum >= 0 ? '+' : ''}${formatNum(data.plSum)}</td>
+                    <td style="text-align: right" class="${perClass}">${percentFormatter.format(data.per)}%</td>
+                    <td style="text-align: center"><button class="btn-detail" onclick="toggleDetails(${idx})">明細</button></td>
+                `;
+                fragment.appendChild(tr);
+                if (data.details && data.details.length > 0) {
+                    const dTr = document.createElement('tr');
+                    dTr.id = `detail-${idx}`; dTr.className = 'details-row';
+                    dTr.innerHTML = `<td colspan="8"><div id="detail-content-${idx}" class="details-container">載入中...</div></td>`;
+                    fragment.appendChild(dTr);
+                }
+            });
+            inventoryBody.appendChild(fragment);
+            const totalROI = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
+
+            statsGrid.innerHTML = `
+                <div class="card"><div class="card-label">總估計市值</div><div class="card-value">$${formatNum(totalMkt)}</div></div>
+                <div class="card"><div class="card-label">合計未實現損益</div><div class="card-value ${totalPL >= 0 ? 'positive' : 'negative'}">${totalPL >= 0 ? '+' : ''}${formatNum(totalPL)}</div></div>
+                <div class="card"><div class="card-label">總估計報酬率</div><div class="card-value ${totalROI >= 0 ? 'positive' : 'negative'}">${percentFormatter.format(totalROI)}%</div></div>`;
+        }
+
+        window.toggleDetails = (idx) => {
+            const el = document.getElementById(`detail-${idx}`);
+            const contentEl = document.getElementById(`detail-content-${idx}`);
+            if (!el) return;
+            if (el.style.display === 'table-row') el.style.display = 'none';
+            else {
+                if (contentEl.innerHTML === '載入中...') {
+                    const data = currentRows[idx];
+                    let dHtml = '';
+                    data.details.forEach(d => {
+                        const dPL = parseFloat(d.make_a || 0);
+                        dHtml += `<div class="detail-item" style="display: grid; grid-template-columns: 120px 100px 100px 140px; gap: 30px; color: var(--text-muted); opacity: 0.9;">
+                                <span style="font-variant-numeric: tabular-nums;">${d.t_date || ''}</span>
+                                <span style="text-align: right; font-variant-numeric: tabular-nums;">${formatNum(d.qty)}</span>
+                                <span style="text-align: right; font-variant-numeric: tabular-nums;">${parseFloat(d.price || 0).toFixed(2)}</span>
+                                <span style="text-align: right; font-variant-numeric: tabular-nums; font-weight: 500;" class="${dPL >= 0 ? 'positive' : 'negative'}">${dPL >= 0 ? '+' : ''}${formatNum(dPL)}</span>
+                            </div>`;
+                    });
+                    contentEl.innerHTML = dHtml;
+                }
+                el.style.display = 'table-row';
+            }
+        };
+
+        init();
+    </script>
+</body>
+</html>

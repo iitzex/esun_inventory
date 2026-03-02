@@ -1,0 +1,3 @@
+esun-trade
+pandas
+python-dotenv
