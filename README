@@ -1,0 +1,59 @@
+# E.SUN Inventory Dashboard
+
+這是一個基於 **Electron** 與 **Python (esun-trade-sdk)** 開發的個人證券庫存管理工具。
+
+## 🌟 核心特色
+
+- **自動化同步**: 透過 Python SDK 自動抓取玉山證券的最新庫存、銀行餘額與交割資訊。
+- **TOON 資料格式**: 使用高效率的自定義 `TOON` 格式保存歷史快照，具備去重邏輯，節省存儲並方便資料傳輸。
+- **現代化介面**: 採用 Morandi 配色與霓虹燈效（Neon Glow）的深色模式設計，提供極優的視覺體驗。
+- **一鍵導出**: 支援將庫存清單導出為 `self.txt` 格式，方便與其他工具整合。
+- **即時狀態**: 提供 SDK 核心狀態、憑證資訊與當日委託/成交紀錄查詢。
+
+## 🛠️ 技術棧
+
+- **Frontend**: HTML5, Vanilla CSS, Vanilla JavaScript (Inter & Noto Sans TC 旗艦級字體)。
+- **Runtime**: [Electron](https://www.electronjs.org/) (負責桌面環境與 IPC 通訊)。
+- **Backend/Logic**: [Python 3.10+](https://www.python.org/) 搭配 [esun-trade-sdk](https://github.com/E-SUN-Stock/esun-trade-sdk-python)。
+- **Package Manager**: [uv](https://github.com/astral-sh/uv) (建議) 或 pip。
+
+## 🚀 快速開始
+
+### 1. 安裝環境
+
+確保系統已安裝 Python 與 Node.js，建議使用 `uv` 建立虛擬環境：
+
+```bash
+# 建立虛擬環境並安裝依賴
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+
+# 安裝 Node 依賴
+npm install
+```
+
+### 2. 設定參數
+
+請確認目錄下有 `config.ini`，並包含以下必要區段：
+
+- `[Core]`, `[Api]`, `[Cert]`, `[User]`
+- **重要**: 程式會自動將密碼安全地儲存在系統 `Keyring` 中，若 `config.ini` 未提供密碼，首次執行時會提示輸入。
+
+### 3. 啟動應用
+
+```bash
+npm start
+```
+
+## 📂 專案結構
+
+- `index.html`: 主要 UI 層，包含風格化 CSS 與 Dashboard 邏輯。
+- `main.js`: Electron 主進程，處理 Python 腳本調用與檔案系統操作。
+- `download_inventory.py`: Python 核心邏輯，負責與玉山 SDK 交互並生成 TOON 檔案。
+- `inventory/`: 存放歷史資料快照（`.toon`）。
+- `utils.py`: 提供與 `TOON` 格式轉換相關的工具函式。
+
+## 🛡️ 安全說明
+
+本工具不直接明文儲存您的交易密碼或憑證密碼，而是調用系統原生的 Keyring 服務（如 macOS Keychain）。請妥善保管您的 `config.ini` 與憑證檔案。

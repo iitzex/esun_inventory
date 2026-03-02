@@ -11,8 +11,8 @@ Thumbs.db
 
 # Project specifics
 config.ini
-*.p12
 self.txt
+*.p12
 node_modules/
 package-lock.json
 inventory/*.toon
