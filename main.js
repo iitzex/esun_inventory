@@ -126,18 +126,22 @@ ipcMain.handle('get-home-info', async () => {
 });
 
 // IPC Handler: Get News Info (Orders & Transactions)
-ipcMain.handle('get-news-info', async () => {
+ipcMain.handle('get-news-info', async (event, range = '0d') => {
   const now = Date.now();
-  if (newsInfoCache && (now - lastNewsCacheTime < NEWS_CACHE_DURATION)) {
-    console.log('Returning News Info from cache');
-    return { success: true, data: newsInfoCache, fromCache: true };
+  const cacheKey = `news_${range}`;
+  
+  // Use range-specific cache
+  if (newsInfoCache && newsInfoCache[cacheKey] && (now - newsInfoCache[cacheKey].time < NEWS_CACHE_DURATION)) {
+    console.log(`Returning News Info (${range}) from cache`);
+    return { success: true, data: newsInfoCache[cacheKey].data, fromCache: true };
   }
 
   return new Promise((resolve, reject) => {
     const venvPath = path.join(__dirname, '.venv', 'bin', 'python');
     const pythonCmd = fs.existsSync(venvPath) ? venvPath : 'python3';
     const scriptPath = path.join(__dirname, 'get_news_info.py');
-    const process = spawn(pythonCmd, [scriptPath]);
+    // Pass range as argument
+    const process = spawn(pythonCmd, [scriptPath, '--range', range]);
     
     let output = '';
     let errorOutput = '';
@@ -145,8 +149,11 @@ ipcMain.handle('get-news-info', async () => {
     process.stderr.on('data', (data) => errorOutput += data.toString());
     process.on('close', (code) => {
       if (code === 0 && !output.startsWith('Error:')) {
-        newsInfoCache = output;
-        lastNewsCacheTime = Date.now();
+        if (!newsInfoCache) newsInfoCache = {};
+        newsInfoCache[cacheKey] = {
+            data: output,
+            time: Date.now()
+        };
         resolve({ success: true, data: output });
       } else {
         resolve({ success: false, message: output.startsWith('Error:') ? output : errorOutput });

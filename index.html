@@ -345,6 +345,15 @@
     <div id="main-content">
         <div class="top-bar">
             <h2 id="view-title" style="font-size: 1.2rem; font-weight: 700; letter-spacing: 0.05em;">INVESTMENT OVERVIEW</h2>
+            <div id="news-range-selector" style="display: none; align-items: center; gap: 10px;">
+                <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Range</span>
+                <select id="news-range-select" onchange="loadNewsInfo()" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--card-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; outline: none; cursor: pointer;">
+                    <option value="0d">0D (Today)</option>
+                    <option value="3d">3D</option>
+                    <option value="1m">1M</option>
+                    <option value="3m">3M</option>
+                </select>
+            </div>
         </div>
 
         <div class="content-body">
@@ -565,6 +574,8 @@
             document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
             
             const viewTitle = document.getElementById('view-title');
+            const rangeSelector = document.getElementById('news-range-selector');
+            rangeSelector.style.display = 'none';
             
             if (viewId === 'dashboard') {
                 document.getElementById('dashboard-view').style.display = 'block';
@@ -584,16 +595,18 @@
                 document.getElementById('news-view').style.display = 'block';
                 document.getElementById('nav-news').classList.add('active');
                 viewTitle.textContent = 'TRADE ORDERS & TRANSACTIONS';
+                rangeSelector.style.display = 'flex';
                 loadNewsInfo();
             }
         }
 
         async function loadNewsInfo() {
             const container = document.getElementById('news-info-container');
-            container.innerHTML = '<div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">正在同步當日交易數據...</div>';
+            const range = document.getElementById('news-range-select').value;
+            container.innerHTML = `<div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">正在同步 ${range} 交易數據...</div>`;
             
             try {
-                const result = await window.electronAPI.getNewsInfo();
+                const result = await window.electronAPI.getNewsInfo(range);
                 if (!result.success) {
                     container.innerHTML = `<div class="card" style="color: var(--neon-red); padding: 20px;">獲取交易數據失敗: ${result.message}</div>`;
                     return;

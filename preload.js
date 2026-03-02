@@ -7,5 +7,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readBalance: (filename) => ipcRenderer.invoke('read-balance', filename),
   saveSelfTxt: (content) => ipcRenderer.invoke('save-self-txt', content),
   getHomeInfo: () => ipcRenderer.invoke('get-home-info'),
-  getNewsInfo: () => ipcRenderer.invoke('get-news-info')
+  getNewsInfo: (range) => ipcRenderer.invoke('get-news-info', range)
 });
