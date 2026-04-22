@@ -1,30 +1,28 @@
+"""Token-Oriented Object Notation (TOON) 轉換器。
+
+輕量、易讀的自定義格式，用於把 Python 資料結構輸出成文字。
+"""
+
 import io
 import math
 from typing import Any
-from datetime import datetime
+
 
 class ToonConverter:
-    """
-    Token-Oriented Object Notation (TOON) 轉換器
-    用於將 Python 資料結構轉換為輕量、易讀的自定義格式。
-    """
+    """把 Python 物件序列化成 TOON 字串。"""
 
     @staticmethod
     def to_toon(data: Any) -> str:
-        """
-        將 Python 物件轉換為 TOON 字串
-        """
+        """轉成 TOON 字串（首尾空白會 strip 掉）。"""
         output = io.StringIO()
         ToonConverter._serialize(data, output, 0)
         return output.getvalue().strip()
 
     @staticmethod
     def _serialize(data: Any, output: io.StringIO, indent: int) -> None:
-        """
-        遞迴序列化資料結構
-        """
+        """遞迴序列化。null 值會被略過（null pruning）。"""
         space = " " * indent
-        
+
         if isinstance(data, dict):
             for k, v in data.items():
                 if ToonConverter._is_null(v):
@@ -46,26 +44,12 @@ class ToonConverter:
 
     @staticmethod
     def _is_null(v: Any) -> bool:
-        """
-        檢查是否為空值 (Null Pruning)
-        """
         if v is None:
             return True
         if isinstance(v, str) and not v.strip():
             return True
         if isinstance(v, float) and math.isnan(v):
             return True
-        if v == "nan" or v == "NaN":
+        if v in ("nan", "NaN"):
             return True
         return False
-
-def format_timestamp(ts: Any) -> str:
-    """
-    格式化時間戳記
-    """
-    if not ts: return "--"
-    if isinstance(ts, dict) and "seconds" in ts:
-        return datetime.fromtimestamp(ts["seconds"]).strftime("%Y/%m/%d %H:%M:%S")
-    if isinstance(ts, (int, float)):
-        return datetime.fromtimestamp(ts).strftime("%Y/%m/%d %H:%M:%S")
-    return str(ts)

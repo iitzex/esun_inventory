@@ -3,12 +3,14 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
-let homeInfoCache = null;
-let lastCacheTime = 0;
-let newsInfoCache = null;
-let lastNewsCacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const NEWS_CACHE_DURATION = 60 * 1000; // 1 minute (transactions change more often)
+
+const venvPythonPath = path.join(__dirname, '.venv', 'bin', 'python');
+const PYTHON_CMD = fs.existsSync(venvPythonPath) ? venvPythonPath : 'python3';
+const INVENTORY_DIR = path.join(__dirname, 'inventory');
+
+const caches = new Map();
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -17,16 +19,14 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+    },
   });
-
   win.loadFile('index.html');
 }
 
 app.whenReady().then(() => {
   createWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -36,137 +36,92 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// IPC Handler: List inventory files
-ipcMain.handle('list-inventory', async () => {
-  const inventoryDir = path.join(__dirname, 'inventory');
-  if (!fs.existsSync(inventoryDir)) return [];
-  
-  const files = fs.readdirSync(inventoryDir)
-    .filter(file => file.endsWith('.toon') && !file.endsWith('_balance.toon'))
-    .sort((a, b) => b.localeCompare(a));
-    
-  return files;
-});
-
-// IPC Handler: Read inventory file
-ipcMain.handle('read-inventory', async (event, filename) => {
-  if (!filename) return null;
-  const filePath = path.join(__dirname, 'inventory', filename);
-  if (!fs.existsSync(filePath)) return null;
-  
-  return fs.readFileSync(filePath, 'utf8');
-});
-// IPC Handler: Read bank balance file
-ipcMain.handle('read-balance', async (event, filename) => {
-  if (!filename) return null;
-  const filePath = path.join(__dirname, 'inventory', filename);
-  if (!fs.existsSync(filePath)) return null;
-  
-  return fs.readFileSync(filePath, 'utf8');
-});
-
-// IPC Handler: Trigger inventory download via Python
-ipcMain.handle('download-inventory', async () => {
-  return new Promise((resolve, reject) => {
-    const venvPath = path.join(__dirname, '.venv', 'bin', 'python');
-    const pythonCmd = fs.existsSync(venvPath) ? venvPath : 'python3';
-    
-    const scriptPath = path.join(__dirname, 'download_inventory.py');
-    const process = spawn(pythonCmd, [scriptPath]);
-    
-    let output = '';
-    let errorOutput = '';
-
-    process.stdout.on('data', (data) => {
-      output += data.toString();
+// Python scripts surface errors either via non-zero exit code or by printing
+// "Error: ..." to stdout (see src/esun_inventory/cli/_runner.py).
+// PYTHONPATH=src avoids relying on the editable install's absolute path in
+// .venv/.../site-packages/_editable_impl_*.pth, which breaks after electron-
+// packager relocates the app to ~/Applications.
+function runPythonModule(moduleName, args = []) {
+  return new Promise((resolve) => {
+    const proc = spawn(PYTHON_CMD, ['-m', moduleName, ...args], {
+      cwd: __dirname,
+      env: { ...process.env, PYTHONPATH: path.join(__dirname, 'src') },
     });
+    let stdout = '';
+    let stderr = '';
 
-    process.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-    });
-
-    process.on('close', (code) => {
-      if (code === 0) {
-        resolve({ success: true, message: output });
+    proc.stdout.on('data', (d) => (stdout += d.toString()));
+    proc.stderr.on('data', (d) => (stderr += d.toString()));
+    proc.on('close', (code) => {
+      if (code === 0 && !stdout.startsWith('Error:')) {
+        resolve({ success: true, data: stdout });
       } else {
-        resolve({ success: false, message: errorOutput });
+        resolve({
+          success: false,
+          message: stdout.startsWith('Error:') ? stdout : stderr,
+        });
       }
     });
   });
-});
+}
 
-// IPC Handler: Get Home Info (SDK Status)
-ipcMain.handle('get-home-info', async () => {
+async function withCache(key, ttlMs, fn) {
+  const entry = caches.get(key);
   const now = Date.now();
-  if (homeInfoCache && (now - lastCacheTime < CACHE_DURATION)) {
-    console.log('Returning Home Info from cache');
-    return { success: true, data: homeInfoCache, fromCache: true };
+  if (entry && now - entry.time < ttlMs) {
+    return { ...entry.value, fromCache: true };
   }
+  const value = await fn();
+  if (value.success) caches.set(key, { value, time: now });
+  return value;
+}
 
-  return new Promise((resolve, reject) => {
-    const venvPath = path.join(__dirname, '.venv', 'bin', 'python');
-    const pythonCmd = fs.existsSync(venvPath) ? venvPath : 'python3';
-    const scriptPath = path.join(__dirname, 'get_home_info.py');
-    const process = spawn(pythonCmd, [scriptPath]);
-    
-    let output = '';
-    let errorOutput = '';
-    process.stdout.on('data', (data) => output += data.toString());
-    process.stderr.on('data', (data) => errorOutput += data.toString());
-    process.on('close', (code) => {
-      if (code === 0 && !output.startsWith('Error:')) {
-        homeInfoCache = output;
-        lastCacheTime = Date.now();
-        resolve({ success: true, data: output });
-      } else {
-        resolve({ success: false, message: output.startsWith('Error:') ? output : errorOutput });
-      }
-    });
-  });
-});
-
-// IPC Handler: Get News Info (Orders & Transactions)
-ipcMain.handle('get-news-info', async (event, range = '0d') => {
-  const now = Date.now();
-  const cacheKey = `news_${range}`;
-  
-  // Use range-specific cache
-  if (newsInfoCache && newsInfoCache[cacheKey] && (now - newsInfoCache[cacheKey].time < NEWS_CACHE_DURATION)) {
-    console.log(`Returning News Info (${range}) from cache`);
-    return { success: true, data: newsInfoCache[cacheKey].data, fromCache: true };
-  }
-
-  return new Promise((resolve, reject) => {
-    const venvPath = path.join(__dirname, '.venv', 'bin', 'python');
-    const pythonCmd = fs.existsSync(venvPath) ? venvPath : 'python3';
-    const scriptPath = path.join(__dirname, 'get_news_info.py');
-    // Pass range as argument
-    const process = spawn(pythonCmd, [scriptPath, '--range', range]);
-    
-    let output = '';
-    let errorOutput = '';
-    process.stdout.on('data', (data) => output += data.toString());
-    process.stderr.on('data', (data) => errorOutput += data.toString());
-    process.on('close', (code) => {
-      if (code === 0 && !output.startsWith('Error:')) {
-        if (!newsInfoCache) newsInfoCache = {};
-        newsInfoCache[cacheKey] = {
-            data: output,
-            time: Date.now()
-        };
-        resolve({ success: true, data: output });
-      } else {
-        resolve({ success: false, message: output.startsWith('Error:') ? output : errorOutput });
-      }
-    });
-  });
-});
-
-// IPC Handler: Save content to self.txt
-ipcMain.handle('save-self-txt', async (event, content) => {
+// Read a file, swallowing ENOENT. Avoids the TOCTOU pattern of checking
+// existsSync before reading.
+function tryReadFile(filePath, encoding = 'utf8') {
   try {
-    const filePath = path.join(__dirname, 'self.txt');
-    fs.writeFileSync(filePath, content, 'utf8');
+    return fs.readFileSync(filePath, encoding);
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+ipcMain.handle('list-inventory', async () => {
+  try {
+    return fs.readdirSync(INVENTORY_DIR)
+      .filter((f) => f.endsWith('.toon') && !f.endsWith('_balance.toon'))
+      .sort((a, b) => b.localeCompare(a));
+  } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    throw err;
+  }
+});
+
+ipcMain.handle('read-inventory', async (_event, filename) => {
+  if (!filename) return null;
+  return tryReadFile(path.join(INVENTORY_DIR, filename));
+});
+
+ipcMain.handle('download-inventory', () =>
+  runPythonModule('esun_inventory.cli.download_inventory')
+);
+
+ipcMain.handle('get-home-info', () =>
+  withCache('home-info', CACHE_DURATION, () =>
+    runPythonModule('esun_inventory.cli.home_info')
+  )
+);
+
+ipcMain.handle('get-news-info', (_event, range = '0d') =>
+  withCache(`news-${range}`, NEWS_CACHE_DURATION, () =>
+    runPythonModule('esun_inventory.cli.news_info', ['--range', range])
+  )
+);
+
+ipcMain.handle('save-self-txt', async (_event, content) => {
+  try {
+    fs.writeFileSync(path.join(__dirname, 'self.txt'), content, 'utf8');
     return { success: true };
   } catch (err) {
     return { success: false, message: err.message };

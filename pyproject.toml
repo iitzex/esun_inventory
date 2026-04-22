@@ -1,0 +1,19 @@
+[project]
+name = "esun-inventory"
+version = "0.1.0"
+description = "玉山證券庫存下載與查詢工具（Electron app 後端）"
+requires-python = ">=3.12"
+dependencies = [
+    "esun-trade",
+    "keyring",
+]
+
+[tool.uv.sources]
+esun-trade = { path = "vendor/esun_trade-2.2.0-cp37-abi3-macosx_11_0_arm64.whl" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/esun_inventory"]
