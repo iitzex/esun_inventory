@@ -125,7 +125,7 @@ ipcMain.handle('get-news-info', (_event, range = '0d') =>
 
 ipcMain.handle('save-self-txt', async (_event, content) => {
   try {
-    fs.writeFileSync(path.join(PROJECT_ROOT, 'self.txt'), content, 'utf8');
+    fs.writeFileSync(path.join(PROJECT_ROOT, 'private', 'self.txt'), content, 'utf8');
     return { success: true };
   } catch (err) {
     return { success: false, message: err.message };

@@ -26,7 +26,7 @@ REQUIRED_CONFIG = {
 }
 
 
-def load_config(path: str = "config.ini") -> configparser.ConfigParser:
+def load_config(path: str = "private/config.ini") -> configparser.ConfigParser:
     """讀取並驗證 config.ini。缺區段或金鑰會 raise。"""
     config_path = Path(path)
     if not config_path.exists():
