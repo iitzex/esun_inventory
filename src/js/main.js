@@ -6,9 +6,13 @@ const { spawn } = require('child_process');
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const NEWS_CACHE_DURATION = 60 * 1000; // 1 minute (transactions change more often)
 
-const venvPythonPath = path.join(__dirname, '.venv', 'bin', 'python');
+// main.js lives in src/js/, but .venv / inventory / src (Python package) / config.ini
+// all live at the repo root — resolve everything relative to that.
+const PROJECT_ROOT = path.join(__dirname, '..', '..');
+
+const venvPythonPath = path.join(PROJECT_ROOT, '.venv', 'bin', 'python');
 const PYTHON_CMD = fs.existsSync(venvPythonPath) ? venvPythonPath : 'python3';
-const INVENTORY_DIR = path.join(__dirname, 'inventory');
+const INVENTORY_DIR = path.join(PROJECT_ROOT, 'inventory');
 
 const caches = new Map();
 
@@ -37,15 +41,15 @@ app.on('window-all-closed', () => {
 });
 
 // Python scripts surface errors either via non-zero exit code or by printing
-// "Error: ..." to stdout (see src/esun_inventory/cli/_runner.py).
-// PYTHONPATH=src avoids relying on the editable install's absolute path in
-// .venv/.../site-packages/_editable_impl_*.pth, which breaks after electron-
+// "Error: ..." to stdout (see src/python/esun_inventory/cli/_runner.py).
+// PYTHONPATH=src/python avoids relying on the editable install's absolute path
+// in .venv/.../site-packages/_editable_impl_*.pth, which breaks after electron-
 // packager relocates the app to ~/Applications.
 function runPythonModule(moduleName, args = []) {
   return new Promise((resolve) => {
     const proc = spawn(PYTHON_CMD, ['-m', moduleName, ...args], {
-      cwd: __dirname,
-      env: { ...process.env, PYTHONPATH: path.join(__dirname, 'src') },
+      cwd: PROJECT_ROOT,
+      env: { ...process.env, PYTHONPATH: path.join(PROJECT_ROOT, 'src', 'python') },
     });
     let stdout = '';
     let stderr = '';
@@ -121,7 +125,7 @@ ipcMain.handle('get-news-info', (_event, range = '0d') =>
 
 ipcMain.handle('save-self-txt', async (_event, content) => {
   try {
-    fs.writeFileSync(path.join(__dirname, 'self.txt'), content, 'utf8');
+    fs.writeFileSync(path.join(PROJECT_ROOT, 'self.txt'), content, 'utf8');
     return { success: true };
   } catch (err) {
     return { success: false, message: err.message };
