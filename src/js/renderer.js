@@ -1,9 +1,13 @@
 const inventoryBody = document.getElementById('inventory-body');
 const statsGrid = document.getElementById('stats-container');
+const historyPanel = document.getElementById('history-panel');
+const changesPanel = document.getElementById('changes-panel');
 
 let currentRows = [];
 let sortConfig = { key: null, direction: 'asc' };
 let isHomeLoading = false;
+let inventoryFiles = [];
+const snapshotSummaryCache = new Map();
 
 const ToonParser = {
     parse(text) {
@@ -88,6 +92,317 @@ const percentFormatter = new Intl.NumberFormat('zh-TW', {
 
 function formatNum(num) {
     return currencyFormatter.format(num || 0);
+}
+
+function formatSignedNum(num) {
+    const value = Number(num) || 0;
+    return `${value >= 0 ? '+' : '-'}${formatNum(Math.abs(value))}`;
+}
+
+function formatSignedPercent(num) {
+    return `${percentFormatter.format(Number(num) || 0)}%`;
+}
+
+function formatSnapshotLabel(filename) {
+    const raw = String(filename || '').replace('.toon', '');
+    if (raw.length !== 8) return raw || '未知日期';
+    return `${raw.slice(0, 4)}/${raw.slice(4, 6)}/${raw.slice(6, 8)}`;
+}
+
+function summarizeInventoryRows(inventoryList) {
+    const rows = Array.isArray(inventoryList) ? inventoryList : [];
+    let totalMkt = 0;
+    let totalCost = 0;
+    let totalPL = 0;
+    const positions = new Map();
+
+    rows.forEach((row) => {
+        const stkNo = row.stk_no || 'N/A';
+        if (stkNo === 'N/A') return;
+
+        const qty = parseFloat(row.qty_l) || 0;
+        const avgPrice = parseFloat(row.price_avg) || 0;
+        const nowPrice = parseFloat(row.price_now) || 0;
+        const mktValue = parseFloat(row.rec_va_sum) || 0;
+        const plSum = parseFloat(row.make_a_sum) || 0;
+        const costRaw = Math.abs(parseFloat(row.cost_sum || 0));
+
+        totalMkt += mktValue;
+        totalCost += costRaw;
+        totalPL += plSum;
+
+        positions.set(stkNo, {
+            stkNo,
+            stkNa: row.stk_na || '未知股票',
+            qty,
+            avgPrice,
+            nowPrice,
+            mktValue,
+            plSum,
+            per: parseFloat(row.make_a_per) || 0,
+            costRaw,
+        });
+    });
+
+    return {
+        totalMkt,
+        totalCost,
+        totalPL,
+        roi: totalCost > 0 ? (totalPL / totalCost) * 100 : 0,
+        positionCount: positions.size,
+        positions,
+    };
+}
+
+function summarizeSnapshotData(dataObj) {
+    const summary = summarizeInventoryRows(dataObj?.inventory);
+    const balance = dataObj?.balance || {};
+    const availableBalance = parseFloat(balance.available_balance) || 0;
+    const exchangeBalance = parseFloat(balance.exchange_balance ?? balance.exange_balance) || 0;
+    const reservedBalance = parseFloat(balance.stock_pre_save_amount) || 0;
+
+    return {
+        ...summary,
+        availableBalance,
+        exchangeBalance,
+        reservedBalance,
+        netLiquidity: availableBalance + exchangeBalance - reservedBalance,
+    };
+}
+
+function createSnapshotSummary(filename, dataObj) {
+    return {
+        filename,
+        label: formatSnapshotLabel(filename),
+        ...summarizeSnapshotData(dataObj),
+    };
+}
+
+async function loadSnapshotSummary(filename) {
+    if (!filename) return null;
+    if (snapshotSummaryCache.has(filename)) return snapshotSummaryCache.get(filename);
+
+    const toonText = await window.electronAPI.readInventory(filename);
+    if (!toonText) return null;
+
+    const dataObj = ToonParser.parse(toonText);
+    const summary = createSnapshotSummary(filename, dataObj);
+    snapshotSummaryCache.set(filename, summary);
+    return summary;
+}
+
+function buildSparkline(points) {
+    const values = points.map((point) => Number(point.value) || 0);
+    if (values.length === 0) return '';
+
+    const width = 320;
+    const height = 72;
+    const padding = 6;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+
+    const coords = values.map((value, index) => {
+        const x = padding + (index * (width - padding * 2)) / Math.max(values.length - 1, 1);
+        const y = height - padding - ((value - min) / range) * (height - padding * 2);
+        return [x, y];
+    });
+
+    const linePath = coords.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`).join(' ');
+    const areaPath = `${linePath} L ${coords[coords.length - 1][0]} ${height - padding} L ${coords[0][0]} ${height - padding} Z`;
+
+    return `
+        <svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+            <path class="sparkline-area" d="${areaPath}"></path>
+            <path d="${linePath}"></path>
+        </svg>
+    `;
+}
+
+function renderHistory(summary, history) {
+    if (!summary) {
+        historyPanel.innerHTML = '<div class="card card-loading">尚無歷史快照可分析</div>';
+        return;
+    }
+
+    if (!history || history.length === 0) {
+        historyPanel.innerHTML = '<div class="card card-loading">尚無歷史快照可分析</div>';
+        return;
+    }
+
+    const marketTrend = buildSparkline(history.map((item) => ({ label: item.label, value: item.totalMkt })));
+    const profitTrend = buildSparkline(history.map((item) => ({ label: item.label, value: item.totalPL })));
+    const historyStart = history[0];
+    const historyEnd = history[history.length - 1];
+    const marketDelta = historyEnd.totalMkt - historyStart.totalMkt;
+    const profitDelta = historyEnd.totalPL - historyStart.totalPL;
+
+    historyPanel.innerHTML = `
+        <div class="card insight-card">
+            <div class="card-label">總市值趨勢</div>
+            <div class="card-value">$${formatNum(summary.totalMkt)}</div>
+            <div class="card-subvalue ${marketDelta >= 0 ? 'positive' : 'negative'}">${formatSignedNum(marketDelta)} / ${history.length} 筆快照</div>
+            ${marketTrend}
+            <div class="trend-footnote">${historyStart.label} → ${historyEnd.label}</div>
+        </div>
+        <div class="card insight-card">
+            <div class="card-label">未實現損益趨勢</div>
+            <div class="card-value ${summary.totalPL >= 0 ? 'positive' : 'negative'}">${formatSignedNum(summary.totalPL)}</div>
+            <div class="card-subvalue ${profitDelta >= 0 ? 'positive' : 'negative'}">${formatSignedNum(profitDelta)} / 區間變化</div>
+            ${profitTrend}
+            <div class="trend-footnote">目前報酬率 ${formatSignedPercent(summary.roi)}</div>
+        </div>
+        <div class="card insight-card">
+            <div class="card-label">部位結構</div>
+            <div class="card-value">${formatNum(summary.positionCount)}</div>
+            <div class="card-subvalue">檔 / 淨流動性 $${formatNum(summary.netLiquidity)}</div>
+            <div class="delta-list">
+                <div class="delta-row"><span class="delta-label">可用餘額</span><span class="delta-value">$${formatNum(summary.availableBalance)}</span></div>
+                <div class="delta-row"><span class="delta-label">今日票交</span><span class="delta-value">$${formatNum(summary.exchangeBalance)}</span></div>
+                <div class="delta-row"><span class="delta-label">圈存金額</span><span class="delta-value">$${formatNum(summary.reservedBalance)}</span></div>
+            </div>
+        </div>
+    `;
+}
+
+function diffSummaries(current, previous) {
+    if (!current || !previous) return null;
+
+    const added = [];
+    const removed = [];
+    const changed = [];
+
+    current.positions.forEach((curr, stkNo) => {
+        const prev = previous.positions.get(stkNo);
+        if (!prev) {
+            added.push(curr);
+            return;
+        }
+
+        const qtyDelta = curr.qty - prev.qty;
+        const plDelta = curr.plSum - prev.plSum;
+        const mktDelta = curr.mktValue - prev.mktValue;
+        if (qtyDelta !== 0 || plDelta !== 0 || mktDelta !== 0) {
+            changed.push({
+                stkNo,
+                stkNa: curr.stkNa,
+                qtyDelta,
+                plDelta,
+                mktDelta,
+                currQty: curr.qty,
+                prevQty: prev.qty,
+            });
+        }
+    });
+
+    previous.positions.forEach((prev, stkNo) => {
+        if (!current.positions.has(stkNo)) removed.push(prev);
+    });
+
+    changed.sort((a, b) => Math.abs(b.plDelta) - Math.abs(a.plDelta));
+
+    return {
+        added,
+        removed,
+        changed,
+        totalMktDelta: current.totalMkt - previous.totalMkt,
+        totalPLDelta: current.totalPL - previous.totalPL,
+        totalRoiDelta: current.roi - previous.roi,
+        totalPositionDelta: current.positionCount - previous.positionCount,
+    };
+}
+
+function renderChangeRows(title, items, formatter) {
+    if (!items || items.length === 0) {
+        return `
+            <div class="rank-row">
+                <span class="rank-label">${title}</span>
+                <span class="rank-value">無</span>
+            </div>
+        `;
+    }
+
+    return items.map((item) => formatter(title, item)).join('');
+}
+
+function renderChanges(current, previous) {
+    if (!current) {
+        changesPanel.innerHTML = '<div class="card card-loading">請先選擇一筆快照</div>';
+        return;
+    }
+
+    if (!previous) {
+        changesPanel.innerHTML = `
+            <div class="card card-loading">
+                ${current.label} 沒有更早的快照，暫時無法比較前一日差異
+            </div>
+        `;
+        return;
+    }
+
+    const diff = diffSummaries(current, previous);
+    const movers = diff.changed.slice(0, 5);
+
+    changesPanel.innerHTML = `
+        <div class="card insight-card">
+            <div class="card-label">整體變化</div>
+            <div class="card-value ${diff.totalPLDelta >= 0 ? 'positive' : 'negative'}">${formatSignedNum(diff.totalPLDelta)}</div>
+            <div class="card-subvalue">${previous.label} → ${current.label}</div>
+            <div class="delta-list">
+                <div class="delta-row"><span class="delta-label">總市值變動</span><span class="delta-value ${diff.totalMktDelta >= 0 ? 'positive' : 'negative'}">${formatSignedNum(diff.totalMktDelta)}</span></div>
+                <div class="delta-row"><span class="delta-label">報酬率變動</span><span class="delta-value ${diff.totalRoiDelta >= 0 ? 'positive' : 'negative'}">${formatSignedPercent(diff.totalRoiDelta)}</span></div>
+                <div class="delta-row"><span class="delta-label">持股檔數變動</span><span class="delta-value">${diff.totalPositionDelta >= 0 ? '+' : ''}${diff.totalPositionDelta}</span></div>
+            </div>
+        </div>
+        <div class="card insight-card">
+            <div class="card-label">庫存異動</div>
+            <div class="card-value">${diff.added.length + diff.removed.length + diff.changed.length}</div>
+            <div class="card-subvalue">新增 ${diff.added.length} / 減少 ${diff.removed.length} / 調整 ${diff.changed.length}</div>
+            <div class="rank-list">
+                ${renderChangeRows('新增持股', diff.added.slice(0, 2), (_title, item) => `
+                    <div class="rank-row">
+                        <span><span class="rank-label">${_title}</span><span class="rank-meta">${item.stkNa} ${item.stkNo}</span></span>
+                        <span class="rank-value">+${formatNum(item.qty)}</span>
+                    </div>
+                `)}
+                ${renderChangeRows('移除持股', diff.removed.slice(0, 2), (_title, item) => `
+                    <div class="rank-row">
+                        <span><span class="rank-label">${_title}</span><span class="rank-meta">${item.stkNa} ${item.stkNo}</span></span>
+                        <span class="rank-value">-${formatNum(item.qty)}</span>
+                    </div>
+                `)}
+            </div>
+        </div>
+        <div class="card insight-card">
+            <div class="card-label">損益變動最大</div>
+            <div class="card-value">${movers.length}</div>
+            <div class="card-subvalue">依未實現損益變動排序</div>
+            <div class="rank-list">
+                ${renderChangeRows('部位', movers, (_title, item) => `
+                    <div class="rank-row">
+                        <span>
+                            <span class="rank-label">${item.stkNa}</span>
+                            <span class="rank-meta">${item.stkNo} / 股數 ${formatSignedNum(item.qtyDelta)} / 前 ${formatNum(item.prevQty)} → 現 ${formatNum(item.currQty)}</span>
+                        </span>
+                        <span class="rank-value ${item.plDelta >= 0 ? 'positive' : 'negative'}">${formatSignedNum(item.plDelta)}</span>
+                    </div>
+                `)}
+            </div>
+        </div>
+    `;
+}
+
+async function updateInsights(selectedFile) {
+    const selectedIndex = inventoryFiles.indexOf(selectedFile);
+    const currentSummary = await loadSnapshotSummary(selectedFile);
+    const previousSummary = selectedIndex >= 0 ? await loadSnapshotSummary(inventoryFiles[selectedIndex + 1]) : null;
+
+    const historyStartIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    const recentFiles = inventoryFiles.slice(historyStartIndex, historyStartIndex + 12).reverse();
+    const recentHistory = (await Promise.all(recentFiles.map((file) => loadSnapshotSummary(file)))).filter(Boolean);
+
+    renderHistory(currentSummary, recentHistory);
+    renderChanges(currentSummary, previousSummary);
 }
 
 function infoRow(key, value) {
@@ -285,8 +600,18 @@ function handleDashboardClick() {
 
 async function init() {
     const files = await window.electronAPI.listInventory();
+    inventoryFiles = files;
     const menu = document.getElementById('sidebar-date-menu');
     menu.innerHTML = '';
+
+    if (files.length === 0) {
+        processData(null);
+        renderBankBalance(null);
+        renderSettlements(null);
+        renderHistory(null, []);
+        renderChanges(null, null);
+        return;
+    }
 
     const groups = {};
     files.forEach(file => {
@@ -333,9 +658,11 @@ async function selectDate(filename, element) {
         return;
     }
     const dataObj = ToonParser.parse(toonText);
+    snapshotSummaryCache.set(filename, createSnapshotSummary(filename, dataObj));
     processData(dataObj.inventory);
     renderBankBalance(dataObj.balance);
     renderSettlements(dataObj.settlements);
+    await updateInsights(filename);
 
     switchView('dashboard');
 }

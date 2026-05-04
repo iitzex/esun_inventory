@@ -25,6 +25,7 @@
     --radius: 10px;
     --radius-sm: 5px;
     --transition: 0.2s ease;
+    --font-mono: 'Roboto Mono', 'Noto Sans Mono', 'Noto Sans Mono CJK TC', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -40,7 +41,7 @@ body {
         radial-gradient(ellipse at 85% -10%, rgba(140, 74, 74, 0.06) 0%, transparent 55%),
         radial-gradient(ellipse at 15% 105%, rgba(78, 107, 76, 0.04) 0%, transparent 50%);
     color: var(--text-main);
-    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    font-family: var(--font-mono);
     display: flex;
     height: 100vh;
     overflow: hidden;
@@ -200,7 +201,7 @@ body {
 .sub-item {
     padding: 6px 12px;
     color: var(--text-muted);
-    font-family: 'Roboto Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.15s;
@@ -234,6 +235,13 @@ body {
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.insight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 14px;
     margin-bottom: 28px;
 }
@@ -284,7 +292,7 @@ body {
 }
 
 .card-value {
-    font-family: 'Roboto Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 1.9rem;
     font-weight: 400;
     letter-spacing: -0.02em;
@@ -323,7 +331,7 @@ td {
     padding: 13px 20px;
     font-size: 0.96rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-mono);
     transition: background var(--transition);
 }
 
@@ -331,7 +339,7 @@ tbody tr:hover td { background: rgba(0, 0, 0, 0.02); }
 tbody tr:last-child td { border-bottom: none; }
 
 td[style*="text-align: right"] {
-    font-family: 'Roboto Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.95rem;
     letter-spacing: 0.018em;
 }
@@ -350,7 +358,7 @@ td[style*="text-align: right"] {
     letter-spacing: 0.12em;
     cursor: pointer;
     transition: all var(--transition);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-mono);
 }
 
 .btn-detail:hover {
@@ -430,7 +438,7 @@ td[style*="text-align: right"] {
     font-size: 0.82rem !important;
     outline: none !important;
     cursor: pointer !important;
-    font-family: 'Inter', sans-serif !important;
+    font-family: var(--font-mono) !important;
     letter-spacing: 0.04em !important;
     transition: border-color var(--transition) !important;
 }
@@ -472,7 +480,7 @@ td[style*="text-align: right"] {
 }
 .info-row-key {
     color: var(--text-muted);
-    font-family: 'Roboto Mono', monospace;
+    font-family: var(--font-mono);
 }
 .info-row-value {
     color: var(--text-main);
@@ -521,7 +529,7 @@ td[style*="text-align: right"] {
 .settlement-amount {
     font-size: 1.6rem;
     font-weight: 400;
-    font-family: 'Roboto Mono', monospace;
+    font-family: var(--font-mono);
     letter-spacing: -0.02em;
 }
 
@@ -531,6 +539,77 @@ td.center { text-align: center; }
 td.num-strong { font-weight: 500; }
 .stock-name { font-weight: 500; }
 .stock-id   { font-size: 0.84rem; color: var(--text-muted); }
+
+.insight-card {
+    min-height: 180px;
+}
+
+.card-subvalue {
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    letter-spacing: 0.02em;
+}
+
+.sparkline {
+    width: 100%;
+    height: 72px;
+    margin-top: 14px;
+}
+
+.sparkline path {
+    fill: none;
+    stroke: var(--neon-red);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.sparkline .sparkline-area {
+    fill: rgba(140, 74, 74, 0.08);
+    stroke: none;
+}
+
+.trend-footnote {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.delta-list,
+.rank-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.delta-row,
+.rank-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.9rem;
+}
+
+.delta-label,
+.rank-label {
+    color: var(--text-muted);
+}
+
+.delta-value,
+.rank-value {
+    font-family: var(--font-mono);
+}
+
+.rank-meta {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
 
 /* ===== Trade detail rows (expandable row under inventory) ===== */
 .detail-item {

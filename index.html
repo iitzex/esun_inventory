@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E.SUN Premium Inventory Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="src/js/styles.css">
 </head>
 <body>
@@ -87,6 +87,14 @@
             <div id="dashboard-view" class="view-content">
                 <div class="dashboard-sections" style="margin-top: 20px;">
                     <div id="stats-container" class="stats-grid"></div>
+                    <section>
+                        <h3 class="section-title">歷史趨勢</h3>
+                        <div id="history-panel" class="insight-grid"></div>
+                    </section>
+                    <section>
+                        <h3 class="section-title">與前次快照差異</h3>
+                        <div id="changes-panel" class="insight-grid"></div>
+                    </section>
                     <div class="inventory-card">
                         <table>
                             <thead>
