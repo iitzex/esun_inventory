@@ -6,8 +6,7 @@ from typing import Optional
 
 from esun_trade.sdk import SDK
 
-from esun_inventory.cli._runner import run_cli
-from esun_inventory.client import login
+from esun_inventory.cli.base import BaseCommand
 from esun_inventory.utils.logger import get_logger
 from esun_inventory.utils.toon import ToonConverter
 
@@ -47,37 +46,40 @@ def write_snapshot(content: str, output_dir: Path) -> None:
     logger.info(f"🆕 資料有變動，已建立整合檔案: {new_path.name}")
 
 
-def download_inventory(sdk: SDK, output_dir: str = "inventory") -> None:
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
+class DownloadInventoryCommand(BaseCommand):
+    def __init__(self, output_dir: str = "inventory"):
+        super().__init__(prepare=True)
+        self.output_dir = output_dir
 
-    logger.info("正在抓取庫存資料...")
-    inventories = sdk.get_inventories()
-    balance = fetch_balance(sdk)
-    settlements = sdk.get_settlements()
+    def execute(self, sdk: SDK) -> None:
+        output_path = Path(self.output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
 
-    if not inventories and not balance and not settlements:
-        logger.warning("目前帳戶無資料 (庫存、餘額與交割皆空)。")
-        return
+        logger.info("正在抓取庫存資料...")
+        inventories = sdk.get_inventories()
+        balance = fetch_balance(sdk)
+        settlements = sdk.get_settlements()
 
-    consolidated = {
-        "inventory": inventories or [],
-        "balance": balance or {},
-        "settlements": settlements or [],
-    }
-    toon_content = ToonConverter.to_toon(consolidated)
-    write_snapshot(toon_content, output_path)
+        if not inventories and not balance and not settlements:
+            logger.warning("目前帳戶無資料 (庫存、餘額與交割皆空)。")
+            return
 
-    print(f"\n成功！庫存: {len(inventories) if inventories else 0} 筆, 餘額已更新。")
+        consolidated = {
+            "inventory": inventories or [],
+            "balance": balance or {},
+            "settlements": settlements or [],
+        }
+        toon_content = ToonConverter.to_toon(consolidated)
+        write_snapshot(toon_content, output_path)
+
+        print(f"\n成功！庫存: {len(inventories) if inventories else 0} 筆, 餘額已更新。")
 
 
 def main() -> None:
     logger.info("🎬 啟動玉山證券庫存下載程序...")
-    sdk = login(prepare=True)
-    logger.info("登入成功！")
-    download_inventory(sdk)
+    DownloadInventoryCommand().main()
     logger.info("✅ 程序順利完成。")
 
 
 if __name__ == "__main__":
-    run_cli(main)
+    main()

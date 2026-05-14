@@ -271,6 +271,7 @@ function diffSummaries(current, previous) {
     const added = [];
     const removed = [];
     const changed = [];
+    const qtyChanged = [];
 
     current.positions.forEach((curr, stkNo) => {
         const prev = previous.positions.get(stkNo);
@@ -283,7 +284,7 @@ function diffSummaries(current, previous) {
         const plDelta = curr.plSum - prev.plSum;
         const mktDelta = curr.mktValue - prev.mktValue;
         if (qtyDelta !== 0 || plDelta !== 0 || mktDelta !== 0) {
-            changed.push({
+            const changeItem = {
                 stkNo,
                 stkNa: curr.stkNa,
                 qtyDelta,
@@ -291,7 +292,9 @@ function diffSummaries(current, previous) {
                 mktDelta,
                 currQty: curr.qty,
                 prevQty: prev.qty,
-            });
+            };
+            changed.push(changeItem);
+            if (qtyDelta !== 0) qtyChanged.push(changeItem);
         }
     });
 
@@ -305,6 +308,7 @@ function diffSummaries(current, previous) {
         added,
         removed,
         changed,
+        qtyChanged,
         totalMktDelta: current.totalMkt - previous.totalMkt,
         totalPLDelta: current.totalPL - previous.totalPL,
         totalRoiDelta: current.roi - previous.roi,
@@ -356,8 +360,8 @@ function renderChanges(current, previous) {
         </div>
         <div class="card insight-card">
             <div class="card-label">庫存異動</div>
-            <div class="card-value">${diff.added.length + diff.removed.length + diff.changed.length}</div>
-            <div class="card-subvalue">新增 ${diff.added.length} / 減少 ${diff.removed.length} / 調整 ${diff.changed.length}</div>
+            <div class="card-value">${diff.added.length + diff.removed.length + diff.qtyChanged.length}</div>
+            <div class="card-subvalue">新增 ${diff.added.length} / 減少 ${diff.removed.length} / 調整 ${diff.qtyChanged.length}</div>
             <div class="rank-list">
                 ${renderChangeRows('新增持股', diff.added.slice(0, 2), (_title, item) => `
                     <div class="rank-row">
