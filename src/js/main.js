@@ -103,8 +103,10 @@ ipcMain.handle('list-inventory', async () => {
 });
 
 ipcMain.handle('read-inventory', async (_event, filename) => {
-  if (!filename) return null;
-  return tryReadFile(path.join(INVENTORY_DIR, filename));
+  if (!filename || typeof filename !== 'string') return null;
+  const base = path.basename(filename);
+  if (base !== filename || !base.endsWith('.toon')) return null;
+  return tryReadFile(path.join(INVENTORY_DIR, base));
 });
 
 ipcMain.handle('download-inventory', () =>

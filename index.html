@@ -16,7 +16,7 @@
             <span class="logo-wordmark">E.SUN</span>
         </div>
         <div class="sidebar-nav">
-            <div id="nav-dashboard" class="sidebar-item active" onclick="handleDashboardClick()" style="display:flex; justify-content:space-between; align-items:center;">
+            <div id="nav-dashboard" class="sidebar-item active" onclick="handleDashboardClick()">
                 <span>Stock</span>
                 <svg id="dashboard-chevron" viewBox="0 0 10 6" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; transition: transform 0.25s ease; transform: rotate(180deg);">
                     <path d="M1 5L5 1L9 5"/>
@@ -29,41 +29,40 @@
             <div id="nav-home" class="sidebar-item" onclick="switchView('home')">Home</div>
             <div id="nav-wallet" class="sidebar-item" onclick="switchView('wallet')">Wallet</div>
             <div id="nav-news" class="sidebar-item" onclick="switchView('news')">News</div>
-            <div id="sync-btn-sidebar" class="sidebar-action" onclick="handleDownload()">
-                <span class="sync-label">SYNC</span>
+            <div id="sync-btn" class="sidebar-action" onclick="handleDownload()">
+                <span>SYNC</span>
                 <span class="sync-icon"></span>
             </div>
-            <div id="export-btn-sidebar" class="sidebar-action" onclick="exportToSelfTxt()">
-                <span class="export-label">EXPORT</span>
-                <span class="sync-icon"></span>
+            <div id="export-btn" class="sidebar-action" onclick="exportToSelfTxt()">
+                <span>EXPORT</span>
             </div>
         </div>
     </div>
 
     <div id="main-content">
         <div class="top-bar">
-            <h2 id="view-title" style="font-size: 1.35rem; font-weight: 700; letter-spacing: 0.05em;">INVESTMENT OVERVIEW</h2>
+            <h2 id="view-title">INVESTMENT OVERVIEW</h2>
             <div id="news-range-selector" style="display: none; align-items: center; gap: 10px;">
-                <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Range</span>
-                <select id="news-range-select" onchange="loadNewsInfo()" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--card-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; outline: none; cursor: pointer;">
+                <span>Range</span>
+                <select id="news-range-select" onchange="loadNewsInfo()">
                     <option value="0d">0D (Today)</option>
                     <option value="3d">3D</option>
                     <option value="1m">1M</option>
                     <option value="3m">3M</option>
                 </select>
             </div>
+            <div class="top-bar-actions">
+            </div>
         </div>
 
         <div class="content-body">
             <!-- News View -->
             <div id="news-view" class="view-content" style="display: none;">
-                <div class="dashboard-sections" style="margin-top: 20px;">
+                <div class="dashboard-sections view-section">
                     <section>
                         <h3 class="section-title">交易委託與成交數據</h3>
-                        <div id="news-info-container" style="display: flex; flex-direction: column; gap: 20px;">
-                            <div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                                正在讀取交易數據...
-                            </div>
+                        <div id="news-info-container" class="view-col-list">
+                            <div class="card card-loading">正在讀取交易數據...</div>
                         </div>
                     </section>
                 </div>
@@ -71,13 +70,11 @@
 
             <!-- Home View -->
             <div id="home-view" class="view-content" style="display: none;">
-                <div class="dashboard-sections" style="margin-top: 20px;">
+                <div class="dashboard-sections view-section">
                     <section>
                         <h3 class="section-title">SDK 原始狀態數據</h3>
-                        <div id="home-info-container" style="display: flex; flex-direction: column; gap: 20px;">
-                            <div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                                正在讀取 SDK 完整資訊...
-                            </div>
+                        <div id="home-info-container" class="view-col-list">
+                            <div class="card card-loading">正在讀取 SDK 完整資訊...</div>
                         </div>
                     </section>
                 </div>
@@ -85,7 +82,7 @@
 
             <!-- Dashboard View -->
             <div id="dashboard-view" class="view-content">
-                <div class="dashboard-sections" style="margin-top: 20px;">
+                <div class="dashboard-sections view-section">
                     <div id="stats-container" class="stats-grid"></div>
                     <section>
                         <h3 class="section-title">歷史趨勢</h3>
@@ -99,13 +96,13 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th onclick="setSort('stkNa')">股票名稱</th>
-                                    <th onclick="setSort('qty')" style="text-align: right">庫存股數</th>
-                                    <th onclick="setSort('avgPrice')" style="text-align: right">平均成本</th>
-                                    <th onclick="setSort('nowPrice')" style="text-align: right">當前市價</th>
-                                    <th onclick="setSort('mktValue')" style="text-align: right">資產市值</th>
-                                    <th onclick="setSort('plSum')" style="text-align: right">未實現損益</th>
-                                    <th onclick="setSort('per')" style="text-align: right">報酬率</th>
+                                    <th onclick="setSort('stkNa')">股票名稱<span class="sort-arrow"></span></th>
+                                    <th onclick="setSort('qty')" class="th-right">庫存股數<span class="sort-arrow"></span></th>
+                                    <th onclick="setSort('avgPrice')" class="th-right">平均成本<span class="sort-arrow"></span></th>
+                                    <th onclick="setSort('nowPrice')" class="th-right">當前市價<span class="sort-arrow"></span></th>
+                                    <th onclick="setSort('mktValue')" class="th-right">資產市值<span class="sort-arrow"></span></th>
+                                    <th onclick="setSort('plSum')" class="th-right">未實現損益<span class="sort-arrow"></span></th>
+                                    <th onclick="setSort('per')" class="th-right">報酬率<span class="sort-arrow"></span></th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -117,9 +114,10 @@
 
             <!-- Wallet View -->
             <div id="wallet-view" class="view-content" style="display: none;">
-                <div class="dashboard-sections" style="margin-top: 20px;">
+                <div class="dashboard-sections view-section">
                     <section id="bank-section">
                         <h3 class="section-title">銀行帳務 (餘額)</h3>
+                        <div id="bank-staleness" class="card card-error" style="display: none;"></div>
                         <div id="bank-grid" class="stats-grid">
                             <div class="card">
                                 <div class="card-label">可用餘額</div>
@@ -135,12 +133,10 @@
                             </div>
                         </div>
                     </section>
-                    <section id="settlements-section" style="margin-top: 30px;">
+                    <section id="settlements-section" class="wallet-settlements">
                         <h3 class="section-title">交割資訊 (Settlements)</h3>
-                        <div id="settlements-container" style="display: flex; flex-direction: column; gap: 15px;">
-                            <div class="card" style="text-align: center; padding: 20px; color: var(--text-muted);">
-                                暫無交割資料
-                            </div>
+                        <div id="settlements-container" class="view-col-list">
+                            <div class="card card-loading">暫無交割資料</div>
                         </div>
                     </section>
                 </div>
@@ -148,6 +144,6 @@
         </div>
     </div>
 
-    <script src="src/js/renderer.js"></script>
+    <script type="module" src="src/js/renderer.js"></script>
 </body>
 </html>

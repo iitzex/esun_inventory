@@ -5,7 +5,7 @@
 ## 🌟 核心特色
 
 - **自動化同步**: 透過 Python SDK 自動抓取玉山證券的最新庫存、銀行餘額與交割資訊。
-- **TOON 資料格式**: 使用高效率的自定義 `TOON` 格式保存歷史快照，具備去重邏輯，節省存儲並方便資料傳輸。
+- **TOON 資料格式**: 使用自定義的 `TOON` 格式保存每日快照（同一天重複同步會覆蓋），並在前端以快照間差異比對呈現增減。
 - **現代化介面**: 採用 Morandi 配色與霓虹燈效（Neon Glow）的深色模式設計，提供極優的視覺體驗。
 - **一鍵導出**: 支援將庫存清單導出為 `self.txt` 格式，方便與其他工具整合。
 - **即時狀態**: 提供 SDK 核心狀態、憑證資訊與當日委託/成交紀錄查詢。
@@ -14,7 +14,7 @@
 
 - **Frontend**: HTML5, Vanilla CSS, Vanilla JavaScript (Inter & Noto Sans TC 旗艦級字體)。
 - **Runtime**: [Electron](https://www.electronjs.org/) (負責桌面環境與 IPC 通訊)。
-- **Backend/Logic**: [Python 3.10+](https://www.python.org/) 搭配 [esun-trade-sdk](https://github.com/E-SUN-Stock/esun-trade-sdk-python)。
+- **Backend/Logic**: [Python 3.12+](https://www.python.org/) 搭配 [esun-trade-sdk](https://github.com/E-SUN-Stock/esun-trade-sdk-python)。
 - **Package Manager**: [uv](https://github.com/astral-sh/uv) (建議) 或 pip。
 
 ## 🚀 快速開始
@@ -46,11 +46,11 @@ npm start
 
 ## 📂 專案結構
 
-- `index.html`: 主要 UI 層，包含風格化 CSS 與 Dashboard 邏輯。
-- `main.js`: Electron 主進程，處理 Python 腳本調用與檔案系統操作。
-- `download_inventory.py`: Python 核心邏輯，負責與玉山 SDK 交互並生成 TOON 檔案。
-- `inventory/`: 存放歷史資料快照（`.toon`）。
-- `utils.py`: 提供與 `TOON` 格式轉換相關的工具函式。
+- `index.html`: 主要 UI 層。
+- `src/js/main.js`: Electron 主進程，處理 Python 腳本調用與檔案系統操作。
+- `src/python/esun_inventory/cli/download_inventory.py`: Python 核心邏輯，負責與玉山 SDK 交互並生成 TOON 檔案。
+- `inventory/`: 存放每日歷史快照（`YYYYMMDD.toon`）。
+- `src/python/esun_inventory/utils/toon.py`: 提供 TOON 格式轉換工具。
 
 ## 🛡️ 安全說明
 

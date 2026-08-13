@@ -5,7 +5,7 @@ import getpass
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 import keyring
 from esun_trade.sdk import SDK
@@ -26,7 +26,7 @@ class EsunConfig:
 
     raw_config: configparser.ConfigParser
 
-    REQUIRED_KEYS = {
+    REQUIRED_KEYS: ClassVar[dict[str, list[str]]] = {
         "Core": ["Entry"],
         "Api": ["Key", "Secret"],
         "Cert": ["Path"],
@@ -99,12 +99,35 @@ class EsunClient:
             return
         if keyring.get_password(key, account_id):
             return
+        self._require_tty(label)
         print(f"--- {label}缺失 (帳號: {account_id}) ---", file=sys.stderr)
         pwd = getpass.getpass(prompt)
         keyring.set_password(key, account_id, pwd)
 
+    @staticmethod
+    def _require_tty(label: str) -> None:
+        """非終端環境（如 Electron spawn）下 getpass 會永遠阻塞，直接報錯。"""
+        if not sys.stdin.isatty():
+            raise RuntimeError(
+                f"{label}缺失，且目前為非終端環境（無法互動輸入）。"
+                "請在 config.ini 設定對應 Password，或先於終端執行一次。"
+            )
+
     def login(self) -> SDK:
         """執行登入。"""
+        account_id = self.config.account
+        missing = [
+            label
+            for key, label in (
+                (TRADE_SDK_ACCOUNT_KEY, "帳戶密碼"),
+                (TRADE_SDK_CERT_KEY, "憑證密碼"),
+            )
+            if not keyring.get_password(key, account_id)
+        ]
+        if missing:
+            # SDK 內部 load_credentials 在缺密碼時會呼叫 getpass，
+            # 非終端環境下同樣會阻塞，需提前擋下。
+            self._require_tty("、".join(missing))
         self._sdk = SDK(self.config.raw_config)
         self._sdk.login()
         return self._sdk

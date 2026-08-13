@@ -1,6 +1,9 @@
 """Token-Oriented Object Notation (TOON) 轉換器。
 
 輕量、易讀的自定義格式，用於把 Python 資料結構輸出成文字。
+
+注意：TOON 對空容器不可逆——空 list/dict 都只會輸出 `key:` 一行，
+解析端會把 `key:` 還原成 `{}`。消費端應以 `Array.isArray` 等型別檢查容錯。
 """
 
 import io
@@ -46,10 +49,8 @@ class ToonConverter:
     def _is_null(v: Any) -> bool:
         if v is None:
             return True
-        if isinstance(v, str) and not v.strip():
-            return True
+        if isinstance(v, str):
+            return not v.strip() or v.strip().lower() == "nan"
         if isinstance(v, float) and math.isnan(v):
-            return True
-        if v in ("nan", "NaN"):
             return True
         return False
