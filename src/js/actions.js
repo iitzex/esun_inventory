@@ -1,11 +1,22 @@
-import { ToonParser } from './parser.js';
-import { snapshotSummaryCache, createSnapshotSummary, loadSnapshotSummary } from './data.js';
-import { render, renderBankBalance, renderSettlements, renderHistory, renderChanges, renderInfoSection, toggleDetails } from './ui.js';
+import { ToonParser, formatSnapshotLabel } from './parser.js';
+import { snapshotSummaryCache, createSnapshotSummary, loadSnapshotSummary, rowToPosition } from './data.js';
+import { render, renderBankBalance, renderSettlements, renderHistory, renderChanges, renderInfoSection, renderMarketStatus, renderRealizedPlStats, toggleDetails } from './ui.js';
+
+const VIEW_DEFS = {
+    dashboard: ['dashboard-view', 'nav-dashboard', 'INVESTMENT OVERVIEW'],
+    wallet:    ['wallet-view',    'nav-wallet',    'BANKING ASSETS'],
+    home:      ['home-view',      'nav-home',      'CORE STATUS'],
+    news:      ['news-view',      'nav-news',      'TRADE ORDERS & TRANSACTIONS'],
+};
 
 let currentRows = [];
 let sortConfig = { key: null, direction: 'asc' };
 let isHomeLoading = false;
 let inventoryFiles = [];
+
+function renderLoadError(container, message) {
+    container.innerHTML = `<div class="card card-error">${message}</div>`;
+}
 
 function makeButtonStateSetter(btnId) {
     const btn = document.getElementById(btnId);
@@ -15,30 +26,31 @@ function makeButtonStateSetter(btnId) {
     };
 }
 
+const syncBtn = makeButtonStateSetter('sync-btn');
+const exportBtn = makeButtonStateSetter('export-btn');
+
 export async function handleDownload() {
-    const setState = makeButtonStateSetter('sync-btn');
-    setState('syncing', 'SYNCING');
+    syncBtn('syncing', 'SYNCING');
     try {
         const result = await window.electronAPI.downloadInventory();
-        if (result.success) { setState('done', 'DONE'); await init(); }
-        else setState('error', 'FAILED');
-    } catch { setState('error', 'ERROR'); }
-    finally { setTimeout(() => setState('', 'SYNC'), 2000); }
+        if (result.success) { syncBtn('done', 'DONE'); await init(); }
+        else syncBtn('error', 'FAILED');
+    } catch { syncBtn('error', 'ERROR'); }
+    finally { setTimeout(() => syncBtn('', 'SYNC'), 2000); }
 }
 
 export async function exportToSelfTxt() {
-    const setState = makeButtonStateSetter('export-btn');
     if (!currentRows || currentRows.length === 0) {
-        setState('error', 'NO DATA');
-        setTimeout(() => setState('', 'EXPORT'), 2000);
+        exportBtn('error', 'NO DATA');
+        setTimeout(() => exportBtn('', 'EXPORT'), 2000);
         return;
     }
-    setState('syncing', 'EXPORTING');
+    exportBtn('syncing', 'EXPORTING');
     try {
         const result = await window.electronAPI.saveSelfTxt(currentRows.map(r => `${r.stkNo},${r.stkNa}`).join('\n'));
-        setState(result.success ? 'done' : 'error', result.success ? 'DONE' : 'FAILED');
-    } catch { setState('error', 'ERROR'); }
-    finally { setTimeout(() => setState('', 'EXPORT'), 2000); }
+        exportBtn(result.success ? 'done' : 'error', result.success ? 'DONE' : 'FAILED');
+    } catch { exportBtn('error', 'ERROR'); }
+    finally { setTimeout(() => exportBtn('', 'EXPORT'), 2000); }
 }
 
 export function toggleDashboard(forceOpen = false) {
@@ -55,15 +67,9 @@ export function switchView(viewId) {
 
     const viewTitle = document.getElementById('view-title');
     const rangeSelector = document.getElementById('news-range-selector');
-    rangeSelector.style.display = 'none';
+    rangeSelector.classList.add('hidden');
 
-    const views = {
-        dashboard: ['dashboard-view', 'nav-dashboard', 'INVESTMENT OVERVIEW'],
-        wallet:    ['wallet-view',    'nav-wallet',    'BANKING ASSETS'],
-        home:      ['home-view',      'nav-home',      'CORE STATUS'],
-        news:      ['news-view',      'nav-news',      'TRADE ORDERS & TRANSACTIONS'],
-    };
-    const [viewEl, navEl, title] = views[viewId] || [];
+    const [viewEl, navEl, title] = VIEW_DEFS[viewId] || [];
     if (!viewEl) return;
 
     document.getElementById(viewEl).style.display = 'block';
@@ -71,8 +77,18 @@ export function switchView(viewId) {
     viewTitle.textContent = title;
 
     if (viewId === 'dashboard') toggleDashboard(true);
-    if (viewId === 'home') loadHomeInfo();
-    if (viewId === 'news') { rangeSelector.style.display = 'flex'; loadNewsInfo(); }
+    if (viewId === 'home') { loadMarketInfo(); loadHomeInfo(); }
+    if (viewId === 'news') { rangeSelector.classList.remove('hidden'); loadNewsInfo(); }
+}
+
+export async function loadMarketInfo() {
+    const el = document.getElementById('market-status');
+    if (!el) return;
+    try {
+        const result = await window.electronAPI.getMarketInfo();
+        if (!result.success) { renderMarketStatus(null); return; }
+        renderMarketStatus(ToonParser.parse(result.data));
+    } catch { renderMarketStatus(null); }
 }
 
 export async function loadHomeInfo() {
@@ -84,7 +100,7 @@ export async function loadHomeInfo() {
     isHomeLoading = true;
     try {
         const result = await window.electronAPI.getHomeInfo();
-        if (!result.success) { container.innerHTML = `<div class="card card-error">獲取資訊失敗: ${result.message}</div>`; return; }
+        if (!result.success) { renderLoadError(container, `獲取資訊失敗: ${result.message}`); return; }
         const data = ToonParser.parse(result.data);
         container.innerHTML = [
             data.cert && renderInfoSection('憑證資訊 (Certificate)', data.cert),
@@ -92,24 +108,33 @@ export async function loadHomeInfo() {
             data.trade_status && renderInfoSection('交易權限與額度 (Trade Status)', data.trade_status),
         ].filter(Boolean).join('');
     } catch (err) {
-        container.innerHTML = `<div class="card card-error">執行異常: ${err.message}</div>`;
+        renderLoadError(container, `執行異常: ${err.message}`);
     } finally { isHomeLoading = false; }
 }
 
 export async function loadNewsInfo() {
     const container = document.getElementById('news-info-container');
     const range = document.getElementById('news-range-select').value;
-    container.innerHTML = `<div class="card card-loading">正在同步 ${range} 交易數據...</div>`;
+    const startInput = document.getElementById('news-start').value;
+    const endInput = document.getElementById('news-end').value;
+    const useCustom = startInput && endInput;
+    const start = useCustom ? startInput.replaceAll('-', '') : null;
+    const end = useCustom ? endInput.replaceAll('-', '') : null;
+    const rangeLabel = useCustom ? `${start}~${end}` : range;
+    const opts = useCustom ? { start, end } : { range };
+
+    container.innerHTML = `<div class="card card-loading">正在同步 ${rangeLabel} 交易數據...</div>`;
     try {
-        const result = await window.electronAPI.getNewsInfo(range);
-        if (!result.success) { container.innerHTML = `<div class="card card-error">獲取交易數據失敗: ${result.message}</div>`; return; }
+        const result = await window.electronAPI.getNewsInfo(opts);
+        if (!result.success) { renderLoadError(container, `獲取交易數據失敗: ${result.message}`); return; }
         const data = ToonParser.parse(result.data);
+        renderRealizedPlStats(data.transactions, rangeLabel);
         container.innerHTML = [
             data.orders && renderInfoSection('委託紀錄 (Orders)', data.orders),
             data.transactions && renderInfoSection('成交明細 (Transactions)', data.transactions),
-        ].filter(Boolean).join('') || '<div class="card card-loading">今日無交易委託或成交紀錄</div>';
+        ].filter(Boolean).join('') || `<div class="card card-loading">${rangeLabel} 區間無交易委託或成交紀錄</div>`;
     } catch (err) {
-        container.innerHTML = `<div class="card card-error">執行異常: ${err.message}</div>`;
+        renderLoadError(container, `執行異常: ${err.message}`);
     }
 }
 
@@ -154,20 +179,7 @@ function processData(inventoryList) {
         render(currentRows);
         return;
     }
-    currentRows = inventoryList
-        .map(row => ({
-            stkNo: row.stk_no || 'N/A',
-            stkNa: row.stk_na || '未知股票',
-            qty: parseFloat(row.qty_l) || 0,
-            avgPrice: parseFloat(row.price_avg) || 0,
-            nowPrice: parseFloat(row.price_now) || 0,
-            mktValue: parseFloat(row.rec_va_sum) || 0,
-            plSum: parseFloat(row.make_a_sum) || 0,
-            per: parseFloat(row.make_a_per) || 0,
-            details: Array.isArray(row.stk_dats) ? row.stk_dats : [],
-            costRaw: Math.abs(parseFloat(row.cost_sum || 0)),
-        }))
-        .filter(r => r.stkNo !== 'N/A');
+    currentRows = inventoryList.map(rowToPosition).filter(r => r.stkNo !== 'N/A');
     render(currentRows);
 }
 
@@ -195,6 +207,7 @@ export async function init() {
     inventoryFiles = files;
     const menu = document.getElementById('sidebar-date-menu');
     menu.innerHTML = '';
+    loadMarketInfo();
 
     if (files.length === 0) {
         processData(null); renderBankBalance(null); renderSettlements(null);
@@ -216,10 +229,9 @@ export async function init() {
         menu.appendChild(label);
 
         groups[month].forEach(file => {
-            const dateStr = file.replace('.toon', '');
             const item = document.createElement('div');
             item.className = 'sub-item';
-            item.textContent = `${dateStr.substring(0,4)}/${dateStr.substring(4,6)}/${dateStr.substring(6,8)}`;
+            item.textContent = formatSnapshotLabel(file);
             item.onclick = (e) => { e.stopPropagation(); selectDate(file, item); };
             menu.appendChild(item);
             if (idx === 0 && groups[month][0] === file) { selectDate(file, item, false); menu.classList.add('show'); }

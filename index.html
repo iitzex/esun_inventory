@@ -18,7 +18,7 @@
         <div class="sidebar-nav">
             <div id="nav-dashboard" class="sidebar-item active" onclick="handleDashboardClick()">
                 <span>Stock</span>
-                <svg id="dashboard-chevron" viewBox="0 0 10 6" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; transition: transform 0.25s ease; transform: rotate(180deg);">
+                <svg id="dashboard-chevron" viewBox="0 0 10 6" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M1 5L5 1L9 5"/>
                 </svg>
             </div>
@@ -42,23 +42,29 @@
     <div id="main-content">
         <div class="top-bar">
             <h2 id="view-title">INVESTMENT OVERVIEW</h2>
-            <div id="news-range-selector" style="display: none; align-items: center; gap: 10px;">
+            <div id="news-range-selector" class="news-range-selector hidden">
                 <span>Range</span>
-                <select id="news-range-select" onchange="loadNewsInfo()">
+                <select id="news-range-select" class="range-control" onchange="loadNewsInfo()">
                     <option value="0d">0D (Today)</option>
                     <option value="3d">3D</option>
                     <option value="1m">1M</option>
                     <option value="3m">3M</option>
                 </select>
-            </div>
-            <div class="top-bar-actions">
+                <input type="date" id="news-start" class="range-control" onchange="loadNewsInfo()">
+                <span>~</span>
+                <input type="date" id="news-end" class="range-control" onchange="loadNewsInfo()">
             </div>
         </div>
 
         <div class="content-body">
             <!-- News View -->
-            <div id="news-view" class="view-content" style="display: none;">
+            <div id="news-view" class="view-content">
                 <div class="dashboard-sections view-section">
+                    <section id="news-pl-section">
+                        <h3 class="section-title">已實現損益統計 (Realized P/L)</h3>
+                        <div id="news-pl-stats" class="stats-grid"></div>
+                        <div id="news-pl-breakdown"></div>
+                    </section>
                     <section>
                         <h3 class="section-title">交易委託與成交數據</h3>
                         <div id="news-info-container" class="view-col-list">
@@ -69,8 +75,9 @@
             </div>
 
             <!-- Home View -->
-            <div id="home-view" class="view-content" style="display: none;">
+            <div id="home-view" class="view-content">
                 <div class="dashboard-sections view-section">
+                    <div id="market-status" class="market-status"></div>
                     <section>
                         <h3 class="section-title">SDK 原始狀態數據</h3>
                         <div id="home-info-container" class="view-col-list">
@@ -113,11 +120,11 @@
             </div>
 
             <!-- Wallet View -->
-            <div id="wallet-view" class="view-content" style="display: none;">
+            <div id="wallet-view" class="view-content">
                 <div class="dashboard-sections view-section">
                     <section id="bank-section">
                         <h3 class="section-title">銀行帳務 (餘額)</h3>
-                        <div id="bank-staleness" class="card card-error" style="display: none;"></div>
+                        <div id="bank-staleness" class="card card-error"></div>
                         <div id="bank-grid" class="stats-grid">
                             <div class="card">
                                 <div class="card-label">可用餘額</div>

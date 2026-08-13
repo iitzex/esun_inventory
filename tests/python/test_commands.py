@@ -1,11 +1,13 @@
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock
 
-from esun_inventory.cli.download_inventory import fetch_balance, write_snapshot, DownloadInventoryCommand
-from esun_inventory.cli.news_info import NewsInfoCommand
+from esun_inventory.cli.download_inventory import (
+    DownloadInventoryCommand,
+    fetch_balance,
+    write_snapshot,
+)
 from esun_inventory.cli.home_info import HomeInfoCommand
-
+from esun_inventory.cli.market_info import MarketInfoCommand
+from esun_inventory.cli.news_info import NewsInfoCommand
 
 # --- fetch_balance ---
 
@@ -97,6 +99,21 @@ def test_news_info_empty_results():
     assert result["transactions"] == []
 
 
+def test_news_info_by_date_execute():
+    sdk = MagicMock()
+    sdk.get_order_results_by_date.return_value = [{"order_id": "3"}]
+    sdk.get_transactions_by_date.return_value = [{"tx_id": "4"}]
+
+    result = NewsInfoCommand(start="20260701", end="20260731").execute(sdk)
+
+    assert result["orders"] == [{"order_id": "3"}]
+    assert result["transactions"] == [{"tx_id": "4"}]
+    sdk.get_order_results_by_date.assert_called_once_with("2026-07-01", "2026-07-31")
+    sdk.get_transactions_by_date.assert_called_once_with("2026-07-01", "2026-07-31")
+    sdk.get_order_results.assert_not_called()
+    sdk.get_transactions.assert_not_called()
+
+
 # --- HomeInfoCommand ---
 
 def test_home_info_execute():
@@ -110,3 +127,20 @@ def test_home_info_execute():
     assert result["cert"] == {"expiry": "2026-12-31"}
     assert result["key"] == {"status": "active"}
     assert result["trade_status"] == {"limit": 1000000}
+
+
+# --- MarketInfoCommand ---
+
+def test_market_info_execute():
+    sdk = MagicMock()
+    sdk.get_market_status.return_value = {
+        "is_trading_day": True,
+        "last_trading_day": "20260812",
+        "next_trading_day": "20260814",
+    }
+
+    result = MarketInfoCommand().execute(sdk)
+
+    assert result["is_trading_day"] is True
+    assert result["last_trading_day"] == "20260812"
+    assert result["next_trading_day"] == "20260814"

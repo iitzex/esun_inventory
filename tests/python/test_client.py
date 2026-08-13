@@ -1,7 +1,8 @@
 import configparser
+
 import pytest
-from pathlib import Path
-from esun_inventory.client import EsunConfig, EsunClient
+from esun_inventory.client import EsunClient, EsunConfig
+
 
 def test_esun_config_load(tmp_path):
     config_file = tmp_path / "config.ini"
@@ -33,7 +34,6 @@ Entry = test
         EsunConfig.load(str(config_file))
 
 def test_esun_client_prepare(mocker):
-    mock_sdk = mocker.patch("esun_inventory.client.SDK")
     mock_keyring = mocker.patch("esun_inventory.client.keyring")
     mock_setup = mocker.patch("esun_inventory.client.setup_keyring")
     

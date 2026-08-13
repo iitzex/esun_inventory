@@ -5,6 +5,7 @@ const { spawn } = require('child_process');
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const NEWS_CACHE_DURATION = 60 * 1000; // 1 minute (transactions change more often)
+const MARKET_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (open/closed status is stable intraday)
 
 // main.js lives in src/js/, but .venv / inventory / src (Python package) / config.ini
 // all live at the repo root — resolve everything relative to that.
@@ -119,9 +120,18 @@ ipcMain.handle('get-home-info', () =>
   )
 );
 
-ipcMain.handle('get-news-info', (_event, range = '0d') =>
-  withCache(`news-${range}`, NEWS_CACHE_DURATION, () =>
-    runPythonModule('esun_inventory.cli.news_info', ['--range', range])
+ipcMain.handle('get-news-info', (_event, opts = {}) => {
+  const { range = '0d', start, end } = opts;
+  const key = start && end ? `news-${start}-${end}` : `news-${range}`;
+  const args = start && end ? ['--start', start, '--end', end] : ['--range', range];
+  return withCache(key, NEWS_CACHE_DURATION, () =>
+    runPythonModule('esun_inventory.cli.news_info', args)
+  );
+});
+
+ipcMain.handle('get-market-info', () =>
+  withCache('market-info', MARKET_CACHE_DURATION, () =>
+    runPythonModule('esun_inventory.cli.market_info')
   )
 );
 

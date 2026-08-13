@@ -13,9 +13,6 @@
     --neon-glow-red: rgba(140, 74, 74, 0.15);
     --neon-glow-green: rgba(78, 107, 76, 0.15);
 
-    --color-up: var(--neon-red);
-    --color-down: var(--neon-green);
-
     --text-main: #22211C;
     --text-muted: #8A8880;
     --text-faint: rgba(0, 0, 0, 0.2);
@@ -139,6 +136,12 @@ body {
     align-items: center;
 }
 
+#dashboard-chevron {
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+    transform: rotate(180deg);
+}
+
 .sidebar-footer {
     border-top: 1px solid rgba(0, 0, 0, 0.07);
     padding-top: 16px;
@@ -191,10 +194,10 @@ body {
 }
 
 #view-title {
-    font-size: 0.76rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.32em !important;
-    color: var(--text-muted) !important;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    color: var(--text-muted);
 }
 
 .sidebar-sub-menu {
@@ -255,14 +258,18 @@ body {
     margin-bottom: 28px;
 }
 
-.card {
+.card,
+.inventory-card {
     background: linear-gradient(148deg, var(--surface-elevated) 0%, var(--surface) 100%);
-    padding: 22px 24px;
     border-radius: var(--radius);
     border: 1px solid var(--card-border);
     box-shadow:
         0 1px 4px rgba(0, 0, 0, 0.06),
         0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.card {
+    padding: 22px 24px;
     transition: border-color var(--transition), box-shadow var(--transition);
     position: relative;
     overflow: hidden;
@@ -307,13 +314,13 @@ body {
     letter-spacing: -0.02em;
 }
 
+.market-status { margin-bottom: 14px; }
+.market-status .card { padding: 14px 20px; }
+.market-status .card-value { font-size: 1.25rem; }
+.market-status .market-open  .card-value { color: var(--neon-red); }
+.market-status .market-closed .card-value { color: var(--text-muted); }
+
 .inventory-card {
-    background: linear-gradient(148deg, var(--surface-elevated) 0%, var(--surface) 100%);
-    border-radius: var(--radius);
-    border: 1px solid var(--card-border);
-    box-shadow:
-        0 1px 4px rgba(0, 0, 0, 0.06),
-        0 4px 16px rgba(0, 0, 0, 0.04);
     overflow: hidden;
 }
 
@@ -347,12 +354,6 @@ td {
 
 tbody tr:hover td { background: rgba(0, 0, 0, 0.02); }
 tbody tr:last-child td { border-bottom: none; }
-
-td[style*="text-align: right"] {
-    font-family: var(--font-mono);
-    font-size: 0.95rem;
-    letter-spacing: 0.018em;
-}
 
 .positive { color: var(--neon-red); text-shadow: none; }
 .negative { color: var(--neon-green); text-shadow: none; }
@@ -403,88 +404,46 @@ td[style*="text-align: right"] {
     opacity: 0;
     transition: opacity 0.2s;
 }
-#sync-btn-sidebar.syncing {
-    color: var(--text-main);
-    pointer-events: none;
-}
-#sync-btn-sidebar.syncing .sync-icon {
-    opacity: 1;
-    animation: spin 0.75s linear infinite;
-}
-#sync-btn-sidebar.done {
-    color: var(--neon-green);
-    pointer-events: none;
-}
-#sync-btn-sidebar.error {
-    color: var(--neon-red);
-    pointer-events: none;
-}
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
-
-/* Top-bar action buttons */
-.top-bar-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.btn-topbar {
-    background: transparent;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    color: var(--text-muted);
-    padding: 5px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    cursor: pointer;
-    transition: all var(--transition);
-    font-family: var(--font-mono);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.btn-topbar:hover {
-    border-color: rgba(0, 0, 0, 0.28);
-    color: var(--text-main);
-    background: rgba(0, 0, 0, 0.03);
-}
-.btn-topbar.syncing {
-    color: var(--text-main);
-    pointer-events: none;
-}
-.btn-topbar.syncing .sync-icon {
-    opacity: 1;
-    animation: spin 0.75s linear infinite;
-}
-.btn-topbar.done { color: var(--color-down); pointer-events: none; }
-.btn-topbar.error { color: var(--color-up); pointer-events: none; }
 
 /* Shared view section spacing */
 .view-section { margin-top: 20px; }
 .view-col-list { display: flex; flex-direction: column; gap: 20px; }
 .wallet-settlements { margin-top: 30px; }
+.view-content { display: none; }
+#dashboard-view { display: block; }
+.hidden { display: none !important; }
+#news-pl-section { display: none; }
+#bank-staleness { display: none; }
 
 /* News range selector */
-#news-range-selector span {
-    font-size: 0.7rem !important;
-    letter-spacing: 0.14em !important;
+.news-range-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
-#news-range-select {
-    background: var(--surface) !important;
-    color: var(--text-main) !important;
-    border: 1px solid rgba(0, 0, 0, 0.12) !important;
-    border-radius: var(--radius-sm) !important;
-    padding: 5px 10px !important;
-    font-size: 0.82rem !important;
-    outline: none !important;
-    cursor: pointer !important;
-    font-family: var(--font-mono) !important;
-    letter-spacing: 0.04em !important;
-    transition: border-color var(--transition) !important;
+.news-range-selector span {
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
 }
-#news-range-select:hover { border-color: rgba(255, 255, 255, 0.16) !important; }
+.range-control {
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    font-size: 0.82rem;
+    outline: none;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    transition: border-color var(--transition);
+}
+.range-control:hover { border-color: rgba(0, 0, 0, 0.2); }
+.range-control[type="date"] { color-scheme: dark; }
+.range-control::-webkit-calendar-picker-indicator { cursor: pointer; }
 
 /* ===== Card state variants (loading / empty / error) ===== */
 .card-loading {
@@ -582,9 +541,6 @@ td.num-strong { font-weight: 500; }
 .stock-name { font-weight: 500; }
 .stock-id   { font-size: 0.84rem; color: var(--text-muted); }
 
-.insight-card {
-}
-
 .card-subvalue {
     font-family: var(--font-mono);
     font-size: 0.86rem;
@@ -664,7 +620,6 @@ td.num-strong { font-weight: 500; }
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 .detail-item:last-child { border-bottom: none; }
-.detail-item .num { font-variant-numeric: tabular-nums; }
 .detail-item .detail-pl { font-weight: 500; }
 
 /* ===== Sort indicator ===== */

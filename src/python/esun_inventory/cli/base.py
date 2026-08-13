@@ -1,7 +1,7 @@
 """CLI 基底類別：封裝重複的 Setup 與 Output 邏輯。"""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from esun_trade.sdk import SDK
 
@@ -34,6 +34,5 @@ class BaseCommand(ABC):
             print(ToonConverter.to_toon(result))
 
     @abstractmethod
-    def execute(self, sdk: SDK) -> Optional[Any]:
+    def execute(self, sdk: SDK) -> Any | None:
         """子類別需實作的具體業務邏輯。回傳非 None 時會自動轉為 TOON 輸出。"""
-        pass

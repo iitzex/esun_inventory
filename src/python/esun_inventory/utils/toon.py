@@ -51,6 +51,4 @@ class ToonConverter:
             return True
         if isinstance(v, str):
             return not v.strip() or v.strip().lower() == "nan"
-        if isinstance(v, float) and math.isnan(v):
-            return True
-        return False
+        return bool(isinstance(v, float) and math.isnan(v))

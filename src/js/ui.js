@@ -1,4 +1,4 @@
-import { formatNum, formatSignedNum, formatSignedPercent, percentFormatter } from './parser.js';
+import { formatNum, formatSignedNum, formatSignedPercent, formatDate8, percentFormatter } from './parser.js';
 import { diffSummaries } from './data.js';
 
 const inventoryBody = document.getElementById('inventory-body');
@@ -98,7 +98,7 @@ function renderChangeRows(title, items, formatter) {
     if (!items || items.length === 0) {
         return `<div class="rank-row"><span class="rank-label">${title}</span><span class="rank-value">無</span></div>`;
     }
-    return items.map((item) => formatter(title, item)).join('');
+    return items.map(formatter).join('');
 }
 
 export function renderChanges(current, previous) {
@@ -128,10 +128,10 @@ export function buildChangesHTML(current, previous) {
             <div class="card-value">${diff.added.length + diff.removed.length + diff.qtyChanged.length}</div>
             <div class="card-subvalue">新增 ${diff.added.length} / 減少 ${diff.removed.length} / 調整 ${diff.qtyChanged.length}</div>
             <div class="rank-list">
-                ${renderChangeRows('新增持股', diff.added.slice(0, 2), (_t, item) => `
-                    <div class="rank-row"><span><span class="rank-label">${_t}</span><span class="rank-meta">${item.stkNa} ${item.stkNo}</span></span><span class="rank-value">+${formatNum(item.qty)}</span></div>`)}
-                ${renderChangeRows('移除持股', diff.removed.slice(0, 2), (_t, item) => `
-                    <div class="rank-row"><span><span class="rank-label">${_t}</span><span class="rank-meta">${item.stkNa} ${item.stkNo}</span></span><span class="rank-value">-${formatNum(item.qty)}</span></div>`)}
+                ${renderChangeRows('新增持股', diff.added.slice(0, 2), (item) => `
+                    <div class="rank-row"><span><span class="rank-label">新增持股</span><span class="rank-meta">${item.stkNa} ${item.stkNo}</span></span><span class="rank-value">+${formatNum(item.qty)}</span></div>`)}
+                ${renderChangeRows('移除持股', diff.removed.slice(0, 2), (item) => `
+                    <div class="rank-row"><span><span class="rank-label">移除持股</span><span class="rank-meta">${item.stkNa} ${item.stkNo}</span></span><span class="rank-value">-${formatNum(item.qty)}</span></div>`)}
             </div>
         </div>
         <div class="card insight-card">
@@ -139,7 +139,7 @@ export function buildChangesHTML(current, previous) {
             <div class="card-value">${movers.length}</div>
             <div class="card-subvalue">依未實現損益變動排序</div>
             <div class="rank-list">
-                ${renderChangeRows('部位', movers, (_t, item) => `
+                ${renderChangeRows('部位', movers, (item) => `
                     <div class="rank-row">
                         <span><span class="rank-label">${item.stkNa}</span><span class="rank-meta">${item.stkNo} / 股數 ${formatSignedNum(item.qtyDelta)} / 前 ${formatNum(item.prevQty)} → 現 ${formatNum(item.currQty)}</span></span>
                         <span class="rank-value ${item.plDelta >= 0 ? 'positive' : 'negative'}">${formatSignedNum(item.plDelta)}</span>
@@ -177,19 +177,14 @@ export function renderSettlements(settlements) {
         return;
     }
 
-    const fmtDate = (raw) => {
-        const s = String(raw || '');
-        return s.length === 8 ? `${s.slice(0,4)}/${s.slice(4,6)}/${s.slice(6,8)}` : (s || '—');
-    };
-
     container.innerHTML = settlements.map((item) => {
         const amount = parseFloat(item.price) || 0;
         const isReceivable = amount >= 0;
         return `<div class="card settlement-card ${isReceivable ? 'receivable' : 'payable'}">
             <div class="settlement-meta">
-                <div class="settlement-date-label">交割日 ${fmtDate(item.c_date)}</div>
+                <div class="settlement-date-label">交割日 ${formatDate8(item.c_date)}</div>
                 <div class="settlement-type">${isReceivable ? '應收' : '應付'}</div>
-                <div class="settlement-trade-date">成交日 ${fmtDate(item.date)}</div>
+                <div class="settlement-trade-date">成交日 ${formatDate8(item.date)}</div>
             </div>
             <div class="settlement-amount">${isReceivable ? '+' : '-'}$${formatNum(Math.abs(amount))}</div>
         </div>`;
@@ -211,7 +206,7 @@ export function render(currentRows) {
             <td class="num">${data.avgPrice.toFixed(2)}</td>
             <td class="num">${data.nowPrice.toFixed(2)}</td>
             <td class="num num-strong">${formatNum(data.mktValue)}</td>
-            <td class="num ${plClass}">${data.plSum >= 0 ? '+' : ''}${formatNum(data.plSum)}</td>
+            <td class="num ${plClass}">${formatSignedNum(data.plSum)}</td>
             <td class="num ${perClass}">${percentFormatter.format(data.per)}%</td>
             <td class="center"><button class="btn-detail" data-idx="${idx}">明細</button></td>`;
         fragment.appendChild(tr);
@@ -230,7 +225,7 @@ export function render(currentRows) {
     const totalROI = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
     statsGrid.innerHTML = `
         <div class="card"><div class="card-label">總估計市值</div><div class="card-value">$${formatNum(totalMkt)}</div></div>
-        <div class="card"><div class="card-label">合計未實現損益</div><div class="card-value ${totalPL >= 0 ? 'positive' : 'negative'}">${totalPL >= 0 ? '+' : ''}${formatNum(totalPL)}</div></div>
+        <div class="card"><div class="card-label">合計未實現損益</div><div class="card-value ${totalPL >= 0 ? 'positive' : 'negative'}">${formatSignedNum(totalPL)}</div></div>
         <div class="card"><div class="card-label">總估計報酬率</div><div class="card-value ${totalROI >= 0 ? 'positive' : 'negative'}">${percentFormatter.format(totalROI)}%</div></div>`;
 }
 
@@ -244,18 +239,86 @@ export function toggleDetails(idx, currentRows) {
         if (btn) btn.textContent = '明細';
         return;
     }
-    if (contentEl.innerHTML === '載入中...') {
+    if (!el.dataset.loaded) {
         const data = currentRows[idx];
-        contentEl.innerHTML = data.details.map((d) => {
+        contentEl.innerHTML = (data.details || []).map((d) => {
             const dPL = parseFloat(d.make_a || 0);
             return `<div class="detail-item">
                 <span>${d.t_date || ''}</span>
                 <span class="num">${formatNum(d.qty)}</span>
                 <span class="num">${parseFloat(d.price || 0).toFixed(2)}</span>
-                <span class="num detail-pl ${dPL >= 0 ? 'positive' : 'negative'}">${dPL >= 0 ? '+' : ''}${formatNum(dPL)}</span>
+                <span class="num detail-pl ${dPL >= 0 ? 'positive' : 'negative'}">${formatSignedNum(dPL)}</span>
             </div>`;
         }).join('');
+        el.dataset.loaded = 'true';
     }
     el.style.display = 'table-row';
     if (btn) btn.textContent = '收起';
+}
+
+export function renderMarketStatus(data) {
+    const el = document.getElementById('market-status');
+    if (!el) return;
+    if (!data || typeof data !== 'object') {
+        el.innerHTML = '<div class="card market-closed"><div class="card-label">今日市場</div><div class="card-value">--</div><div class="card-subvalue">無法取得市場狀態</div></div>';
+        return;
+    }
+    const isTrading = data.is_trading_day === true;
+    el.innerHTML = `
+        <div class="card ${isTrading ? 'market-open' : 'market-closed'}">
+            <div class="card-label">今日市場</div>
+            <div class="card-value">${isTrading ? '開盤' : '休市'}</div>
+            <div class="card-subvalue">上個交易日 ${formatDate8(data.last_trading_day)} ／ 下個交易日 ${formatDate8(data.next_trading_day)}</div>
+        </div>`;
+}
+
+export function renderRealizedPlStats(transactions, rangeLabel = '') {
+    const section = document.getElementById('news-pl-section');
+    const grid = document.getElementById('news-pl-stats');
+    const breakdown = document.getElementById('news-pl-breakdown');
+    if (!section || !grid || !breakdown) return;
+
+    const rows = Array.isArray(transactions) ? transactions : [];
+    if (rows.length === 0) { section.style.display = 'none'; return; }
+
+    let totalMake = 0, totalBuy = 0, totalSell = 0;
+    const byStock = new Map();
+
+    rows.forEach((t) => {
+        const make = parseFloat(t.make) || 0;
+        const amount = parseFloat(t.price_qty) || 0;
+        const isSell = t.buy_sell === 'S';
+        totalMake += make;
+        if (isSell) totalSell += amount;
+        else totalBuy += amount;
+
+        const key = String(t.stk_no || '');
+        const cur = byStock.get(key) || { name: t.stk_na || key || '未知', buy: 0, sell: 0, make: 0 };
+        cur.buy += isSell ? 0 : amount;
+        cur.sell += isSell ? amount : 0;
+        cur.make += make;
+        byStock.set(key, cur);
+    });
+
+    const plClass = totalMake >= 0 ? 'positive' : 'negative';
+    grid.innerHTML = `
+        <div class="card"><div class="card-label">區間已實現損益${rangeLabel ? ` (${rangeLabel})` : ''}</div><div class="card-value ${plClass}">${formatSignedNum(totalMake)}</div></div>
+        <div class="card"><div class="card-label">賣出金額</div><div class="card-value">${formatNum(totalSell)}</div></div>
+        <div class="card"><div class="card-label">買進金額</div><div class="card-value">${formatNum(totalBuy)}</div></div>
+        <div class="card"><div class="card-label">交易筆數</div><div class="card-value">${rows.length}</div></div>`;
+
+    const stocks = [...byStock.values()].sort((a, b) => b.make - a.make);
+    breakdown.innerHTML = `<div class="inventory-card"><table>
+        <thead><tr>
+            <th>股票</th>
+            <th class="th-right">買進金額</th>
+            <th class="th-right">賣出金額</th>
+            <th class="th-right">已實現損益</th>
+        </tr></thead>
+        <tbody>${stocks.map((s) => {
+            const cls = s.make >= 0 ? 'positive' : 'negative';
+            return `<tr><td>${s.name}</td><td class="num">${formatNum(s.buy)}</td><td class="num">${formatNum(s.sell)}</td><td class="num ${cls}">${formatSignedNum(s.make)}</td></tr>`;
+        }).join('')}</tbody></table></div>`;
+
+    section.style.display = 'block';
 }

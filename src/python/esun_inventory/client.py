@@ -5,7 +5,7 @@ import getpass
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import keyring
 from esun_trade.sdk import SDK
@@ -18,6 +18,12 @@ from esun_trade.util import (
 from esun_inventory.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# (keyring key, config 區段, getpass prompt, 中文標籤)
+_PASSWORD_SLOTS = (
+    (TRADE_SDK_ACCOUNT_KEY, "User", "請輸入您的玉山證券帳戶密碼: ", "帳戶密碼"),
+    (TRADE_SDK_CERT_KEY, "Cert", "請輸入您的交易憑證密碼: ", "憑證密碼"),
+)
 
 
 @dataclass(frozen=True)
@@ -56,7 +62,7 @@ class EsunConfig:
     def account(self) -> str:
         return self.raw_config["User"]["Account"]
 
-    def get_password(self, section: str) -> Optional[str]:
+    def get_password(self, section: str) -> str | None:
         return self.raw_config[section].get("Password")
 
 
@@ -65,30 +71,20 @@ class EsunClient:
 
     def __init__(self, config: EsunConfig):
         self.config = config
-        self._sdk: Optional[SDK] = None
+        self._sdk: SDK | None = None
 
     def prepare(self) -> None:
         """同步密碼至 Keyring；缺少時互動式輸入。"""
         account_id = self.config.account
         setup_keyring(account_id)
 
-        self._sync_password(
-            TRADE_SDK_ACCOUNT_KEY,
-            self.config.get_password("User"),
-            prompt="請輸入您的玉山證券帳戶密碼: ",
-            label="帳戶密碼",
-        )
-        self._sync_password(
-            TRADE_SDK_CERT_KEY,
-            self.config.get_password("Cert"),
-            prompt="請輸入您的交易憑證密碼: ",
-            label="憑證密碼",
-        )
+        for key, section, prompt, label in _PASSWORD_SLOTS:
+            self._sync_password(key, self.config.get_password(section), prompt=prompt, label=label)
 
     def _sync_password(
         self,
         key: str,
-        cfg_password: Optional[str],
+        cfg_password: str | None,
         prompt: str,
         label: str,
     ) -> None:
@@ -118,10 +114,7 @@ class EsunClient:
         account_id = self.config.account
         missing = [
             label
-            for key, label in (
-                (TRADE_SDK_ACCOUNT_KEY, "帳戶密碼"),
-                (TRADE_SDK_CERT_KEY, "憑證密碼"),
-            )
+            for key, _section, _prompt, label in _PASSWORD_SLOTS
             if not keyring.get_password(key, account_id)
         ]
         if missing:

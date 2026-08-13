@@ -1,8 +1,8 @@
 """CLI: 下載庫存/餘額/交割資料，寫入 inventory/YYYYMMDD.toon（同日覆蓋）。"""
 
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from esun_trade.sdk import SDK
 
@@ -13,31 +13,32 @@ from esun_inventory.utils.toon import ToonConverter
 logger = get_logger(__name__)
 
 
-def fetch_balance(sdk: SDK) -> Optional[dict]:
-    """取得銀行餘額。任何錯誤皆回傳 None（不中斷流程）。"""
+def _fetch_safe[T](sdk: SDK, label: str, call: Callable[[], T]) -> T | None:
+    """執行 SDK 呼叫，任何錯誤皆回傳 None（不中斷流程）。"""
     try:
-        logger.info("正在獲取銀行餘額...")
-        return sdk.get_balance()
-    except Exception as e:
-        logger.warning(f"獲取銀行餘額失敗，跳過: {e}")
+        logger.info("正在獲取%s...", label)
+        return call()
+    except Exception as e:  # noqa: BLE001 - 刻意吞錯，單一資源失敗不中斷下載
+        logger.warning("獲取%s失敗，跳過: %s", label, e)
         return None
 
 
-def fetch_settlements(sdk: SDK) -> Optional[list]:
-    """取得交割資料。任何錯誤皆回傳 None（不中斷流程）。"""
-    try:
-        logger.info("正在獲取交割資料...")
-        return sdk.get_settlements()
-    except Exception as e:
-        logger.warning(f"獲取交割資料失敗，跳過: {e}")
-        return None
+def fetch_balance(sdk: SDK) -> dict | None:
+    """取得銀行餘額。"""
+    return _fetch_safe(sdk, "銀行餘額", sdk.get_balance)
+
+
+def fetch_settlements(sdk: SDK) -> list | None:
+    """取得交割資料。"""
+    return _fetch_safe(sdk, "交割資料", sdk.get_settlements)
 
 
 def write_snapshot(content: str, output_dir: Path) -> None:
     """寫入 YYYYMMDD.toon，同天執行時覆蓋。"""
-    path = output_dir / f"{datetime.now().strftime('%Y%m%d')}.toon"
+    date_str = datetime.now().astimezone().strftime("%Y%m%d")
+    path = output_dir / f"{date_str}.toon"
     path.write_text(content, encoding="utf-8")
-    logger.info(f"已寫入快照: {path.name}")
+    logger.info("已寫入快照: %s", path.name)
 
 
 class DownloadInventoryCommand(BaseCommand):
@@ -72,9 +73,9 @@ class DownloadInventoryCommand(BaseCommand):
 
 
 def main() -> None:
-    logger.info("🎬 啟動玉山證券庫存下載程序...")
+    logger.info("啟動玉山證券庫存下載程序...")
     DownloadInventoryCommand().main()
-    logger.info("✅ 程序順利完成。")
+    logger.info("程序順利完成。")
 
 
 if __name__ == "__main__":

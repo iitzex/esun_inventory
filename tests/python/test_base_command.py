@@ -1,5 +1,5 @@
-import pytest
 from esun_inventory.cli.base import BaseCommand
+
 
 class MockSDK:
     def get_info(self):

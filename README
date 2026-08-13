@@ -6,16 +6,17 @@
 
 - **自動化同步**: 透過 Python SDK 自動抓取玉山證券的最新庫存、銀行餘額與交割資訊。
 - **TOON 資料格式**: 使用自定義的 `TOON` 格式保存每日快照（同一天重複同步會覆蓋），並在前端以快照間差異比對呈現增減。
-- **現代化介面**: 採用 Morandi 配色與霓虹燈效（Neon Glow）的深色模式設計，提供極優的視覺體驗。
+- **現代化介面**: 採用 Morandi 淺色紙感配色與霓虹燈效（Neon Glow）設計，提供極優的視覺體驗。
 - **一鍵導出**: 支援將庫存清單導出為 `self.txt` 格式，方便與其他工具整合。
-- **即時狀態**: 提供 SDK 核心狀態、憑證資訊與當日委託/成交紀錄查詢。
+- **即時狀態**: 提供市場開盤狀態、SDK 核心狀態、憑證資訊與委託/成交紀錄查詢（支援自訂日期區間）。
+- **損益統計**: 依委託/成交紀錄彙整區間已實現損益與各股損益明細。
 
 ## 🛠️ 技術棧
 
-- **Frontend**: HTML5, Vanilla CSS, Vanilla JavaScript (Inter & Noto Sans TC 旗艦級字體)。
+- **Frontend**: HTML5, Vanilla CSS, Vanilla JavaScript（Roboto Mono 與 Noto Sans Mono 字體）。
 - **Runtime**: [Electron](https://www.electronjs.org/) (負責桌面環境與 IPC 通訊)。
 - **Backend/Logic**: [Python 3.12+](https://www.python.org/) 搭配 [esun-trade-sdk](https://github.com/E-SUN-Stock/esun-trade-sdk-python)。
-- **Package Manager**: [uv](https://github.com/astral-sh/uv) (建議) 或 pip。
+- **Package Manager**: [uv](https://github.com/astral-sh/uv)。
 
 ## 🚀 快速開始
 
@@ -33,10 +34,10 @@ npm install
 
 ### 2. 設定參數
 
-請確認目錄下有 `config.ini`，並包含以下必要區段：
+請確認 `private/config.ini` 存在，並包含以下必要區段：
 
 - `[Core]`, `[Api]`, `[Cert]`, `[User]`
-- **重要**: 程式會自動將密碼安全地儲存在系統 `Keyring` 中，若 `config.ini` 未提供密碼，首次執行時會提示輸入。
+- **重要**: 程式會自動將密碼安全地儲存在系統 `Keyring` 中，若 `private/config.ini` 未提供密碼，首次執行時會提示輸入。
 
 ### 3. 啟動應用
 
@@ -47,11 +48,12 @@ npm start
 ## 📂 專案結構
 
 - `index.html`: 主要 UI 層。
-- `src/js/main.js`: Electron 主進程，處理 Python 腳本調用與檔案系統操作。
-- `src/python/esun_inventory/cli/download_inventory.py`: Python 核心邏輯，負責與玉山 SDK 交互並生成 TOON 檔案。
+- `src/js/main.js`: Electron 主進程，處理 Python 腳本調用、IPC 與結果快取。
+- `src/python/esun_inventory/client.py`: 設定載入、登入與 Keyring 密碼管理。
+- `src/python/esun_inventory/cli/`: 各 CLI 指令（download_inventory / home_info / market_info / news_info）。
 - `inventory/`: 存放每日歷史快照（`YYYYMMDD.toon`）。
 - `src/python/esun_inventory/utils/toon.py`: 提供 TOON 格式轉換工具。
 
 ## 🛡️ 安全說明
 
-本工具不直接明文儲存您的交易密碼或憑證密碼，而是調用系統原生的 Keyring 服務（如 macOS Keychain）。請妥善保管您的 `config.ini` 與憑證檔案。
+本工具不直接明文儲存您的交易密碼或憑證密碼，而是調用系統原生的 Keyring 服務（如 macOS Keychain）。請妥善保管您的 `private/config.ini` 與憑證檔案。

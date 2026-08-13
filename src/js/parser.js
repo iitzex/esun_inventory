@@ -88,15 +88,20 @@ export function formatNum(num) {
 
 export function formatSignedNum(num) {
     const value = Number(num) || 0;
-    return `${value >= 0 ? '+' : '-'}${formatNum(Math.abs(value))}`;
+    if (value === 0) return formatNum(0);
+    return `${value > 0 ? '+' : '-'}${formatNum(Math.abs(value))}`;
 }
 
 export function formatSignedPercent(num) {
     return `${percentFormatter.format(Number(num) || 0)}%`;
 }
 
+export function formatDate8(raw, emptyFallback = '—') {
+    const s = String(raw ?? '').replace('.toon', '');
+    if (s.length !== 8) return s || emptyFallback;
+    return `${s.slice(0, 4)}/${s.slice(4, 6)}/${s.slice(6, 8)}`;
+}
+
 export function formatSnapshotLabel(filename) {
-    const raw = String(filename || '').replace('.toon', '');
-    if (raw.length !== 8) return raw || '未知日期';
-    return `${raw.slice(0, 4)}/${raw.slice(4, 6)}/${raw.slice(6, 8)}`;
+    return formatDate8(filename, '未知日期');
 }

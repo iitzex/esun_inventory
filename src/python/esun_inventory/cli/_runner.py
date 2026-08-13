@@ -1,13 +1,13 @@
 """CLI 共用 entrypoint：統一例外 → main.js 可識別的失敗格式。
 
-main.js (main.js:41-61) 契約：
+main.js `runPythonModule`（main.js:49-71）契約：
 - stdout 以 'Error:' 開頭 → 失敗
 - 或 exit code 非 0 → 失敗
 這裡兩者同時滿足，讓前端無論哪個分支都能顯示錯誤訊息。
 """
 
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 from esun_inventory.utils.logger import get_logger
 
@@ -23,5 +23,5 @@ def run_cli(fn: Callable[[], None]) -> None:
         sys.exit(130)
     except Exception as e:
         print(f"Error: {e}")
-        logger.error("CLI 執行失敗", exc_info=True)
+        logger.exception("CLI 執行失敗")
         sys.exit(1)
