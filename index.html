@@ -36,23 +36,30 @@
             <div id="export-btn" class="sidebar-action" onclick="exportToSelfTxt()">
                 <span>EXPORT</span>
             </div>
+            <div id="theme-toggle" class="sidebar-action" onclick="toggleTheme()">
+                <span>THEME</span>
+                <span id="theme-toggle-value">淺色</span>
+            </div>
         </div>
     </div>
 
     <div id="main-content">
         <div class="top-bar">
             <h2 id="view-title">INVESTMENT OVERVIEW</h2>
-            <div id="news-range-selector" class="news-range-selector hidden">
-                <span>Range</span>
-                <select id="news-range-select" class="range-control" onchange="loadNewsInfo()">
-                    <option value="0d">0D (Today)</option>
-                    <option value="3d">3D</option>
-                    <option value="1m">1M</option>
-                    <option value="3m">3M</option>
-                </select>
-                <input type="date" id="news-start" class="range-control" onchange="loadNewsInfo()">
-                <span>~</span>
-                <input type="date" id="news-end" class="range-control" onchange="loadNewsInfo()">
+            <div class="top-bar-right">
+                <div id="view-context" class="view-context hidden"></div>
+                <div id="news-range-selector" class="news-range-selector hidden">
+                    <span>Range</span>
+                    <select id="news-range-select" class="range-control" onchange="loadNewsInfo()">
+                        <option value="0d">0D (Today)</option>
+                        <option value="3d">3D</option>
+                        <option value="1m">1M</option>
+                        <option value="3m">3M</option>
+                    </select>
+                    <input type="date" id="news-start" class="range-control" onchange="loadNewsInfo()">
+                    <span>~</span>
+                    <input type="date" id="news-end" class="range-control" onchange="loadNewsInfo()">
+                </div>
             </div>
         </div>
 

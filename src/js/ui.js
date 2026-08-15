@@ -33,14 +33,24 @@ export function infoRow(key, value) {
     return `<div class="info-row"><span class="info-row-key">${key}</span><span class="info-row-value">${value}</span></div>`;
 }
 
-export function renderInfoSection(title, data) {
+export function renderInfoSection(title, data, labelMap = null, valueFormatter = null) {
     let html = `<div class="card card-info-section"><div class="card-label card-section-title">${title}</div><div class="info-list">`;
 
+    const resolveLabel = (prefix) => {
+        if (!labelMap) return prefix;
+        return labelMap[prefix] || labelMap[prefix.split('.')[0]] || prefix;
+    };
+
     const traverse = (target, prefix = '') => {
-        if (target === null || typeof target !== 'object') { html += infoRow(prefix, target); return; }
+        if (target === null || typeof target !== 'object') {
+            const formatted = valueFormatter ? valueFormatter(prefix, target) : target;
+            if (formatted === null) return;
+            html += infoRow(resolveLabel(prefix), formatted);
+            return;
+        }
         if (Array.isArray(target)) {
             if (target.length === 0) { html += '<div class="info-empty">無紀錄</div>'; return; }
-            if (typeof target[0] !== 'object' || target[0] === null) { html += infoRow(prefix, `[${target.join(', ')}]`); return; }
+            if (typeof target[0] !== 'object' || target[0] === null) { html += infoRow(resolveLabel(prefix), `[${target.join(', ')}]`); return; }
             target.forEach((item, idx) => { html += `<div class="info-item-header">#ITEM ${idx + 1}</div>`; traverse(item, prefix); });
             return;
         }
@@ -51,6 +61,54 @@ export function renderInfoSection(title, data) {
     html += '</div></div>';
     return html;
 }
+
+const CODE_MAP = {
+    day_trade_code: { X: '已啟用', Y: '僅可先買後賣', N: '未啟用', S: '暫停中' },
+    margin_code: { '0': '可買賣', '1': '可買', '2': '可賣', '9': '不可買賣' },
+    short_code: { '0': '可買賣', '1': '可買', '2': '可賣', '9': '不可買賣' },
+};
+
+const fmtUnixDate = (unix) => unix ? new Date(Number(unix) * 1000).toLocaleDateString('zh-TW') : '—';
+
+export const HOME_SECTIONS = [
+    {
+        key: 'cert',
+        title: '憑證資訊 (Certificate)',
+        labels: { serial: '憑證序號', is_valid: '有效狀態', not_after: '到期時間', cn: '憑證名稱' },
+        fmt: (k, v) => {
+            if (k === 'is_valid') return v === true ? '有效' : v === false ? '失效' : v;
+            if (k === 'not_after') return fmtUnixDate(v);
+            return v;
+        },
+    },
+    {
+        key: 'key',
+        title: 'API 金鑰狀態 (Key Info)',
+        labels: { api_key: 'API Key', created_at: '建立時間', scope: '權限範圍', status: '狀態' },
+        fmt: (k, v) => {
+            if (k === 'created_at.seconds') return fmtUnixDate(v);
+            if (k === 'created_at.nanos') return null;
+            return v;
+        },
+    },
+    {
+        key: 'trade_status',
+        title: '交易權限與額度 (Trade Status)',
+        labels: {
+            trade_limit: '交易額度',
+            margin_limit: '融資額度',
+            short_limit: '融券額度',
+            day_trade_code: '現股當沖',
+            margin_code: '融資狀態',
+            short_code: '融券狀態',
+        },
+        fmt: (k, v) => {
+            if (k in { trade_limit: 1, margin_limit: 1, short_limit: 1 }) return `$${formatNum(v)}`;
+            if (k in CODE_MAP && CODE_MAP[k][v]) return CODE_MAP[k][v];
+            return v;
+        },
+    },
+];
 
 export function renderTransactions(transactions) {
     if (!Array.isArray(transactions) || transactions.length === 0) {

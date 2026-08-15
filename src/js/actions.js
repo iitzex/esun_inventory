@@ -1,6 +1,6 @@
 import { ToonParser, formatSnapshotLabel } from './parser.js';
 import { snapshotSummaryCache, createSnapshotSummary, loadSnapshotSummary, rowToPosition } from './data.js';
-import { render, renderBankBalance, renderSettlements, renderHistory, renderChanges, renderInfoSection, renderMarketStatus, renderRealizedPlStats, renderTransactions, toggleDetails } from './ui.js';
+import { render, renderBankBalance, renderSettlements, renderHistory, renderChanges, renderInfoSection, renderMarketStatus, renderRealizedPlStats, renderTransactions, toggleDetails, HOME_SECTIONS } from './ui.js';
 
 const VIEW_DEFS = {
     dashboard: ['dashboard-view', 'nav-dashboard', 'INVESTMENT OVERVIEW'],
@@ -13,6 +13,24 @@ let currentRows = [];
 let sortConfig = { key: null, direction: 'asc' };
 let isHomeLoading = false;
 let inventoryFiles = [];
+let currentView = 'dashboard';
+let selectedFile = null;
+let marketStatus = null;
+
+function updateViewContext() {
+    const ctx = document.getElementById('view-context');
+    if (!ctx) return;
+    const isNews = currentView === 'news';
+    ctx.classList.toggle('hidden', isNews);
+    if (isNews) { ctx.innerHTML = ''; return; }
+
+    const isTrading = marketStatus?.is_trading_day === true;
+    const dateHTML = selectedFile ? `<span class="ctx-date">${formatSnapshotLabel(selectedFile)}</span>` : '';
+    const marketHTML = marketStatus
+        ? `<span class="ctx-market ${isTrading ? 'open' : 'closed'}"><i class="ctx-dot"></i>${isTrading ? '開盤' : '休市'}</span>`
+        : '';
+    ctx.innerHTML = `${dateHTML}${marketHTML}`;
+}
 
 function renderLoadError(container, message) {
     container.innerHTML = `<div class="card card-error">${message}</div>`;
@@ -68,6 +86,7 @@ export function switchView(viewId) {
     const viewTitle = document.getElementById('view-title');
     const rangeSelector = document.getElementById('news-range-selector');
     rangeSelector.classList.add('hidden');
+    currentView = viewId;
 
     const [viewEl, navEl, title] = VIEW_DEFS[viewId] || [];
     if (!viewEl) return;
@@ -75,6 +94,7 @@ export function switchView(viewId) {
     document.getElementById(viewEl).style.display = 'block';
     document.getElementById(navEl).classList.add('active');
     viewTitle.textContent = title;
+    updateViewContext();
 
     if (viewId === 'dashboard') toggleDashboard(true);
     if (viewId === 'home') { loadMarketInfo(); loadHomeInfo(); }
@@ -86,9 +106,11 @@ export async function loadMarketInfo() {
     if (!el) return;
     try {
         const result = await window.electronAPI.getMarketInfo();
-        if (!result.success) { renderMarketStatus(null); return; }
-        renderMarketStatus(ToonParser.parse(result.data));
-    } catch { renderMarketStatus(null); }
+        if (!result.success) { renderMarketStatus(null); marketStatus = null; return; }
+        marketStatus = ToonParser.parse(result.data);
+        renderMarketStatus(marketStatus);
+    } catch { renderMarketStatus(null); marketStatus = null; }
+    finally { updateViewContext(); }
 }
 
 export async function loadHomeInfo() {
@@ -102,11 +124,10 @@ export async function loadHomeInfo() {
         const result = await window.electronAPI.getHomeInfo();
         if (!result.success) { renderLoadError(container, `獲取資訊失敗: ${result.message}`); return; }
         const data = ToonParser.parse(result.data);
-        container.innerHTML = [
-            data.cert && renderInfoSection('憑證資訊 (Certificate)', data.cert),
-            data.key && renderInfoSection('API 金鑰狀態 (Key Info)', data.key),
-            data.trade_status && renderInfoSection('交易權限與額度 (Trade Status)', data.trade_status),
-        ].filter(Boolean).join('');
+        container.innerHTML = HOME_SECTIONS
+            .filter(s => data[s.key])
+            .map(s => renderInfoSection(s.title, data[s.key], s.labels, s.fmt))
+            .join('');
     } catch (err) {
         renderLoadError(container, `執行異常: ${err.message}`);
     } finally { isHomeLoading = false; }
@@ -159,6 +180,8 @@ async function updateInsights(selectedFile) {
 export async function selectDate(filename, element, switchToDashboard = true) {
     document.querySelectorAll('.sub-item').forEach(el => el.classList.remove('active'));
     if (element) element.classList.add('active');
+    selectedFile = filename;
+    updateViewContext();
 
     const toonText = await window.electronAPI.readInventory(filename);
     if (!toonText) { processData(null); renderBankBalance(null); return; }
@@ -202,9 +225,33 @@ export function setSort(key) {
     render(currentRows);
 }
 
+export function applySavedTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('esun-theme'); } catch { /* ignore */ }
+    document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+    updateThemeToggle();
+}
+
+export function toggleTheme() {
+    const root = document.documentElement;
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('esun-theme', next); } catch { /* ignore */ }
+    updateThemeToggle();
+}
+
+function updateThemeToggle() {
+    const el = document.getElementById('theme-toggle-value');
+    if (!el) return;
+    el.textContent = document.documentElement.dataset.theme === 'dark' ? '深色' : '淺色';
+}
+
 export async function init() {
+    applySavedTheme();
     const files = await window.electronAPI.listInventory();
     inventoryFiles = files;
+    selectedFile = null;
+    updateViewContext();
     const menu = document.getElementById('sidebar-date-menu');
     menu.innerHTML = '';
     loadMarketInfo();
