@@ -500,6 +500,67 @@ tbody tr:last-child td { border-bottom: none; }
     font-size: 0.9rem;
 }
 
+/* ===== Transaction cards (news view) ===== */
+.tx-card {
+    padding: 14px 18px;
+    margin-bottom: 14px;
+}
+.tx-card:last-child { margin-bottom: 0; }
+.tx-card.buy  { border-left: 3px solid var(--neon-red); }
+.tx-card.sell { border-left: 3px solid var(--neon-green); }
+.tx-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.tx-side {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    color: #fff;
+}
+.tx-side.buy  { background: var(--neon-red); }
+.tx-side.sell { background: var(--neon-green); }
+.tx-name { font-weight: 600; }
+.tx-id {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+.tx-dates {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-align: right;
+}
+.tx-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 32px;
+}
+.tx-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.tx-label {
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+.tx-pl {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-weight: 600;
+}
+.tx-pl-value { font-size: 1.15rem; }
+
 /* ===== Settlement cards (wallet view) ===== */
 .settlement-card {
     display: flex;

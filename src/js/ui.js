@@ -52,6 +52,40 @@ export function renderInfoSection(title, data) {
     return html;
 }
 
+export function renderTransactions(transactions) {
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+        return '<div class="card card-loading">此區間無成交紀錄</div>';
+    }
+
+    return transactions.map((t) => {
+        const isSell = t.buy_sell === 'S';
+        const make = parseFloat(t.make) || 0;
+        const plClass = make >= 0 ? 'positive' : 'negative';
+        const details = [
+            { label: '數量', value: `${formatNum(t.qty)} 股` },
+            { label: '均價', value: `$${parseFloat(t.price_avg || 0).toFixed(2)}` },
+            { label: '成交金額', value: `$${formatNum(t.price_qty)}` },
+        ];
+        if (isSell && t.recv) details.push({ label: '實收金額', value: `$${formatNum(t.recv)}` });
+
+        return `<div class="card tx-card ${isSell ? 'sell' : 'buy'}">
+            <div class="tx-head">
+                <span class="tx-side ${isSell ? 'sell' : 'buy'}">${isSell ? '賣' : '買'}</span>
+                <span class="tx-name">${t.stk_na || '未知股票'}</span>
+                <span class="tx-id">${t.stk_no || ''}</span>
+                <span class="tx-dates">成交 ${formatDate8(t.t_date)} → 交割 ${formatDate8(t.c_date)}</span>
+            </div>
+            <div class="tx-details">
+                ${details.map((d) => `<div class="tx-detail"><span class="tx-label">${d.label}</span><span>${d.value}</span></div>`).join('')}
+            </div>
+            ${isSell ? `<div class="tx-pl">
+                <span class="tx-label">已實現損益</span>
+                <span class="tx-pl-value ${plClass}">${formatSignedNum(make)} (${formatSignedPercent(t.make_per)})</span>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+}
+
 export function renderHistory(summary, history) {
     historyPanel.innerHTML = buildHistoryHTML(summary, history);
 }

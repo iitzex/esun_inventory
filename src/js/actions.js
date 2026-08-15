@@ -1,6 +1,6 @@
 import { ToonParser, formatSnapshotLabel } from './parser.js';
 import { snapshotSummaryCache, createSnapshotSummary, loadSnapshotSummary, rowToPosition } from './data.js';
-import { render, renderBankBalance, renderSettlements, renderHistory, renderChanges, renderInfoSection, renderMarketStatus, renderRealizedPlStats, toggleDetails } from './ui.js';
+import { render, renderBankBalance, renderSettlements, renderHistory, renderChanges, renderInfoSection, renderMarketStatus, renderRealizedPlStats, renderTransactions, toggleDetails } from './ui.js';
 
 const VIEW_DEFS = {
     dashboard: ['dashboard-view', 'nav-dashboard', 'INVESTMENT OVERVIEW'],
@@ -131,7 +131,7 @@ export async function loadNewsInfo() {
         renderRealizedPlStats(data.transactions, rangeLabel);
         container.innerHTML = [
             data.orders && renderInfoSection('委託紀錄 (Orders)', data.orders),
-            data.transactions && renderInfoSection('成交明細 (Transactions)', data.transactions),
+            data.transactions && `<div class="card card-info-section"><div class="card-label card-section-title">成交明細 (Transactions)</div><div class="tx-list">${renderTransactions(data.transactions)}</div></div>`,
         ].filter(Boolean).join('') || `<div class="card card-loading">${rangeLabel} 區間無交易委託或成交紀錄</div>`;
     } catch (err) {
         renderLoadError(container, `執行異常: ${err.message}`);
