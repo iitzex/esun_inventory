@@ -11,44 +11,41 @@ import math
 from typing import Any
 
 
-class ToonConverter:
-    """把 Python 物件序列化成 TOON 字串。"""
+def to_toon(data: Any) -> str:
+    """轉成 TOON 字串（首尾空白會 strip 掉）。"""
+    output = io.StringIO()
+    _serialize(data, output, 0)
+    return output.getvalue().strip()
 
-    @staticmethod
-    def to_toon(data: Any) -> str:
-        """轉成 TOON 字串（首尾空白會 strip 掉）。"""
-        output = io.StringIO()
-        ToonConverter._serialize(data, output, 0)
-        return output.getvalue().strip()
 
-    @staticmethod
-    def _serialize(data: Any, output: io.StringIO, indent: int) -> None:
-        """遞迴序列化。null 值會被略過（null pruning）。"""
-        space = " " * indent
+def _serialize(data: Any, output: io.StringIO, indent: int) -> None:
+    """遞迴序列化。null 值會被略過（null pruning）。"""
+    space = " " * indent
 
-        if isinstance(data, dict):
-            for k, v in data.items():
-                if ToonConverter._is_null(v):
-                    continue
-                if isinstance(v, (dict, list)):
-                    output.write(f"{space}{k}:\n")
-                    ToonConverter._serialize(v, output, indent + 2)
-                else:
-                    output.write(f"{space}{k}: {v}\n")
-        elif isinstance(data, list):
-            for item in data:
-                if isinstance(item, (dict, list)):
-                    output.write(f"{space}-\n")
-                    ToonConverter._serialize(item, output, indent + 2)
-                else:
-                    output.write(f"{space}- {item}\n")
-        else:
-            output.write(f"{space}{data}\n")
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if _is_null(v):
+                continue
+            if isinstance(v, (dict, list)):
+                output.write(f"{space}{k}:\n")
+                _serialize(v, output, indent + 2)
+            else:
+                output.write(f"{space}{k}: {v}\n")
+    elif isinstance(data, list):
+        for item in data:
+            if isinstance(item, (dict, list)):
+                output.write(f"{space}-\n")
+                _serialize(item, output, indent + 2)
+            else:
+                output.write(f"{space}- {item}\n")
+    else:
+        output.write(f"{space}{data}\n")
 
-    @staticmethod
-    def _is_null(v: Any) -> bool:
-        if v is None:
-            return True
-        if isinstance(v, str):
-            return not v.strip() or v.strip().lower() == "nan"
-        return bool(isinstance(v, float) and math.isnan(v))
+
+def _is_null(v: Any) -> bool:
+    if v is None:
+        return True
+    if isinstance(v, str):
+        stripped = v.strip()
+        return not stripped or stripped.lower() == "nan"
+    return isinstance(v, float) and math.isnan(v)

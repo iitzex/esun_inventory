@@ -70,11 +70,11 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        _resolve_range(args.start, args.end)
+        command = NewsInfoCommand(query_range=args.range, start=args.start, end=args.end)
     except ValueError as e:
         parser.error(str(e))
 
-    NewsInfoCommand(query_range=args.range, start=args.start, end=args.end).main()
+    command.main()
 
 
 if __name__ == "__main__":

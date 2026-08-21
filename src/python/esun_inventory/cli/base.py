@@ -7,7 +7,7 @@ from esun_trade.sdk import SDK
 
 from esun_inventory.cli._runner import run_cli
 from esun_inventory.client import EsunClient, EsunConfig
-from esun_inventory.utils.toon import ToonConverter
+from esun_inventory.utils.toon import to_toon
 
 
 class BaseCommand(ABC):
@@ -31,7 +31,7 @@ class BaseCommand(ABC):
         result = self.execute(sdk)
 
         if result is not None:
-            print(ToonConverter.to_toon(result))
+            print(to_toon(result))
 
     @abstractmethod
     def execute(self, sdk: SDK) -> Any | None:

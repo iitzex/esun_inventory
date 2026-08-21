@@ -8,7 +8,7 @@ from esun_trade.sdk import SDK
 
 from esun_inventory.cli.base import BaseCommand
 from esun_inventory.utils.logger import get_logger
-from esun_inventory.utils.toon import ToonConverter
+from esun_inventory.utils.toon import to_toon
 
 logger = get_logger(__name__)
 
@@ -55,7 +55,7 @@ class DownloadInventoryCommand(BaseCommand):
         balance = fetch_balance(sdk)
         settlements = fetch_settlements(sdk)
 
-        if not inventories and not balance and not settlements:
+        if not any((inventories, balance, settlements)):
             logger.warning("目前帳戶無資料 (庫存、餘額與交割皆空)。")
             return
 
@@ -64,7 +64,7 @@ class DownloadInventoryCommand(BaseCommand):
             "balance": balance or {},
             "settlements": settlements or [],
         }
-        toon_content = ToonConverter.to_toon(consolidated)
+        toon_content = to_toon(consolidated)
         write_snapshot(toon_content, output_path)
 
         skipped = sum(1 for v in (balance, settlements) if v is None)
