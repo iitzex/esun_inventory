@@ -17,6 +17,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "pyrefly>=1.2.0",
     "pytest>=9.0.3",
     "pytest-mock>=3.15.1",
     "ruff>=0.16.2",
@@ -24,3 +25,15 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/python/esun_inventory"]
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+project-excludes = [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv",
+    "**/site-packages",
+]

@@ -50,3 +50,21 @@ def test_toon_empty_containers():
     # _is_null only checks None, "", nan. Empty list/dict are NOT null.
     # So they should print the key and then recurse, resulting in just the key line.
     assert "empty_list:" in to_toon(data)
+
+
+def test_toon_boolean_values():
+    data = {"active": True, "deleted": False}
+    expected = "active: True\ndeleted: False"
+    assert to_toon(data) == expected
+
+
+def test_toon_negative_and_zero():
+    data = {"score": -5, "balance": 0, "note": "test"}
+    expected = "score: -5\nbalance: 0\nnote: test"
+    assert to_toon(data) == expected
+
+
+def test_toon_mixed_types():
+    data = {"count": 42, "price": 19.99, "flag": True}
+    expected = "count: 42\nprice: 19.99\nflag: True"
+    assert to_toon(data) == expected

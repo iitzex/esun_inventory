@@ -20,11 +20,16 @@ def _resolve_range(start: str | None, end: str | None) -> tuple[str, str] | None
     """驗證自訂日期區間並轉 ISO；未提供時回傳 None，不合規拋 ValueError。"""
     if (start is None) != (end is None):
         raise ValueError("--start 與 --end 必須成對提供")
-    if start and (not DATE_PATTERN.match(start) or not DATE_PATTERN.match(end)):
-        raise ValueError("日期格式須為 YYYYMMDD")
-    if start and start > end:
-        raise ValueError("--start 不得晚於 --end")
-    return (_to_iso(start), _to_iso(end)) if start else None
+    # 現在已知：start is None ⇔ end is None
+    if start is not None:
+        _s: str = start  # type: ignore
+        _e: str = end  # type: ignore
+        if (not DATE_PATTERN.match(_s) or not DATE_PATTERN.match(_e)):
+            raise ValueError("日期格式須為 YYYYMMDD")
+        if _s > _e:
+            raise ValueError("--start 不得晚於 --end")
+        return (_to_iso(_s), _to_iso(_e))
+    return None
 
 
 class NewsInfoCommand(BaseCommand):
